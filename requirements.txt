@@ -1,0 +1,3 @@
+flask
+#MySQLdb for Python, 64 bit Windows binaries from http://www.codegood.com/archives/129
+MySQL-python

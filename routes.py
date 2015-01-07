@@ -1,8 +1,20 @@
 from flask import Blueprint, Response
 import json
 import settings
+import functions
 routes = Blueprint('routes', __name__)
 
+
+@routes.route('/test')
+def test():
+    return functions.get_values(
+        functions.connect_to_aws_db(),
+        'minutes',
+        'RMPW12',
+        ['airT', 'rh', 'Wmax'],
+        '2011-12-20 12:00:00',
+        '2012-01-06 11:00:00'
+    )
 
 @routes.route('/')
 def home():
