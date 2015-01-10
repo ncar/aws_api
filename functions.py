@@ -1,9 +1,14 @@
 import MySQLdb
 import logging
 import sys
+import json
+from datetime import datetime
 
 
 def db_connect(host="butterfree-bu.nexus.csiro.au", user="root", passwd="branches", db="aws"):
+    """
+    Connects to the AWS database, default parameters supplied for normal connection
+    """
     try:
         conn = MySQLdb.connect(host=host, user=user, passwd=passwd, db=db)
     except MySQLdb.Error, e:
@@ -15,6 +20,12 @@ def db_connect(host="butterfree-bu.nexus.csiro.au", user="root", passwd="branche
 
 
 def db_make_timeseries_query(daily_minutes, aws_id, params, start_time, end_time):
+    """
+    Makes SQL statement for timeseries requests
+
+    daily_minutes: choose 'daily' or 'minutes'
+    params: choose '*' or array of column names
+    """
     sql = 'SELECT '
     if sql == '*':
         sql += '*'
@@ -35,6 +46,9 @@ def db_make_timeseries_query(daily_minutes, aws_id, params, start_time, end_time
 
 
 def db_get_results(conn, query):
+    """
+    Executes given query agains given DB connection
+    """
     try:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -48,7 +62,69 @@ def db_get_results(conn, query):
         conn.commit()
         conn.close()
 
-    return rows
+    #stringify (from JSON)
+    rs = []
+    for row in rows:
+        r = []
+        for col in row:
+            if type(col) is datetime:
+                r.append(col.strftime('%Y-%m-%dT%H:%M:%S'))
+            else:
+                r.append(col)
+        rs.append(r)
+
+    return rs
+
+
+def make_aws_timeseries_json(daily_minutes, params, timeseries_data, jsonp=False, jsonp_function_name=''):
+    """
+    Makes AWS timeseries formated JSON or JSON-P of given timeseries data
+    """
+
+    # TODO: update * parameter list
+    if params == '*':
+        p = [
+                'id',
+                'aws_id',
+                'stamp',
+                'arrival',
+                'airT','appT',
+                'dp',
+                'rh',
+                'deltaT',
+                'soilT',
+                'gsr',
+                'Wmin',
+                'Wavg',
+                'Wmax',
+                'Wdir',
+                'rain',
+                'leaf',
+                'canT',
+                'canRH',
+                'batt',
+                'pressure'
+        ]
+    else:
+        p = ','.join(params)
+
+    header = {
+        'timestep': daily_minutes,
+        'parameters': p,
+        'no_readings': len(timeseries_data)
+    }
+
+    msg = json.dumps({
+        'header': header,
+        'data': timeseries_data
+    })
+
+    if jsonp:
+        return jsonp_function_name + '(' + msg + ');'
+    else:
+        #normal JSON
+        return msg
+
 
 '''
 #every unique key on the table must use every column in the tables partitioning expression

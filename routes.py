@@ -1,4 +1,4 @@
-from flask import Blueprint, Response
+from flask import Blueprint, Response, request
 import json
 import settings
 import functions
@@ -43,15 +43,14 @@ def data():
     - list subregisters: networks, stations, properties
     """
     # test retrieval from
-    conn = functions.db_connect()
     query = functions.db_make_timeseries_query('minutes', 'RMPW12', '*', '2014-06-01', '2014-06-07')
-    rows = functions.db_get_results(conn, query)
+    rows = functions.db_get_results(functions.db_connect(), query)
 
-    rs = ''
-    for row in rows:
-        rs += str(row[2]) + ', ' + str(row[3]) + ', ' + str(row[4]) + '\n'
-
-    return Response(rs, status=200, mimetype='text/plain')
+    #JSON or JSON-P
+    if request.args.get('callback'):
+        return Response(functions.make_aws_timeseries_json('minutes', '*', rows, jsonp=True, jsonp_function_name=request.args.get('callback')), status=200, mimetype='application/json')
+    else:
+        return Response(functions.make_aws_timeseries_json('minutes', '*', rows), status=200, mimetype='application/json')
 
 
 @routes.route('/data/network')
