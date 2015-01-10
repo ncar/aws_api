@@ -42,7 +42,16 @@ def data():
 
     - list subregisters: networks, stations, properties
     """
-    return 'Data'
+    # test retrieval from
+    conn = functions.db_connect()
+    query = functions.db_make_timeseries_query('minutes', 'RMPW12', '*', '2014-06-01', '2014-06-07')
+    rows = functions.db_get_results(conn, query)
+
+    rs = ''
+    for row in rows:
+        rs += str(row[2]) + ', ' + str(row[3]) + ', ' + str(row[4]) + '\n'
+
+    return Response(rs, status=200, mimetype='text/plain')
 
 
 @routes.route('/data/network')
