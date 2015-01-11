@@ -5,17 +5,6 @@ import functions
 routes = Blueprint('routes', __name__)
 
 
-@routes.route('/test')
-def test():
-    return functions.get_values(
-        functions.connect_to_aws_db(),
-        'minutes',
-        'RMPW12',
-        ['airT', 'rh', 'Wmax'],
-        '2011-12-20 12:00:00',
-        '2012-01-06 11:00:00'
-    )
-
 @routes.route('/')
 def home():
     resp = {
@@ -42,29 +31,60 @@ def data():
 
     - list subregisters: networks, stations, properties
     """
-    # test retrieval from
-    query = functions.db_make_timeseries_query('minutes', 'RMPW12', '*', '2014-06-01', '2014-06-07')
-    rows = functions.db_get_results(functions.db_connect(), query)
+    errors = []
 
-    #JSON or JSON-P
-    if request.args.get('callback'):
-        return Response(functions.make_aws_timeseries_json('minutes', '*', rows, jsonp=True, jsonp_function_name=request.args.get('callback')), status=200, mimetype='application/json')
+    # check for bad parameters
+    if not request.args.get('start_date') or not request.args.get('end_date'):
+        errors.append('You must, at least, specify a start_date and end_date query string argument')
+
+    if len(errors) > 0:
+        return Response(json.dumps({'ERRORS': errors}), status=400, mimetype='application/json')
     else:
-        return Response(functions.make_aws_timeseries_json('minutes', '*', rows), status=200, mimetype='application/json')
+        # parameters ok, make the query
+        query = functions.db_make_timeseries_query(
+            request.args.get('timestep'),
+            request.args.get('station_ids'),
+            request.args.get('owners'),
+            request.args.get('properties'),
+            request.args.get('start_date'),
+            request.args.get('end_date'))
+        conn = functions.db_connect()
+        rows = functions.db_get_timeseries_data(conn, query)
+        functions.db_disconnect(conn)
+        data_obj = functions.make_aws_timeseries_obj('minutes', '*', rows)
+
+        #convert data object to JSON
+        resp = json.dumps(data_obj)
+
+        #wrap JSON-P
+        if request.args.get('callback'):
+            resp = request.args.get('callback') + '(' + resp + ');'
+
+        return Response(resp, status=200, mimetype='application/json')
 
 
-@routes.route('/data/network')
-@routes.route('/data/network/')
+@routes.route('/network/')
 def networks():
     """
     Network register: no metadata
 
     - list of networks
     """
-    return 'Network'
+    conn = functions.db_connect()
+    data_obj = functions.get_networks_obj(conn)
+    functions.db_disconnect(conn)
+
+    #convert data object to JSON
+    resp = json.dumps(data_obj)
+
+    #wrap JSON-P
+    if request.args.get('callback'):
+        resp = request.args.get('callback') + '(' + resp + ');'
+
+    return Response(resp, status=200, mimetype='application/json')
 
 
-@routes.route('/data/network/<string:network_id>')
+@routes.route('/network/<string:network_id>')
 def network(network_id):
     """
     A network
@@ -74,43 +94,47 @@ def network(network_id):
     return 'A network: ' + network_id
 
 
-@routes.route('/data/station')
-@routes.route('/data/station/')
+@routes.route('/station/')
 def stations():
     """
-    Station register: no metadata
+    Stations register
 
-    - list of stations
+    Optional QSA parameters 'networks' or 'aws_ids' (not both)
     """
-    return 'Stations'
+    conn = functions.db_connect()
+    data_obj = functions.get_station_details_obj(conn, aws_ids=request.args.get('aws_ids'), owners=request.args.get('networks'))
+    functions.db_disconnect(conn)
+
+    #convert data object to JSON
+    resp = json.dumps(data_obj)
+
+    #wrap JSON-P
+    if request.args.get('callback'):
+        resp = request.args.get('callback') + '(' + resp + ');'
+
+    return Response(resp, status=200, mimetype='application/json')
 
 
-@routes.route('/data/station/<string:station_id>')
+@routes.route('/station/<string:station_id>')
 def station(station_id):
     """
-    A station
+    A station's details
 
-    - list of stations
+    Same as /station/?aws_id=<station_id>
     """
-    return 'A network: ' + station_id
+    conn = functions.db_connect()
+    data_obj = functions.get_station_details_obj(conn, aws_ids=station_id)
+    functions.db_disconnect(conn)
+
+    #convert data object to JSON
+    resp = json.dumps(data_obj)
+
+    #wrap JSON-P
+    if request.args.get('callback'):
+        resp = request.args.get('callback') + '(' + resp + ');'
+
+    return Response(resp, status=200, mimetype='application/json')
 
 
-@routes.route('/data/property')
-@routes.route('/data/property/')
-def properties():
-    """
-    Property register: no metadata
-
-    - list of properties
-    """
-    return 'properties'
 
 
-@routes.route('/data/property/<string:property_id>')
-def property(property_id):
-    """
-    A station
-
-    - list of stations
-    """
-    return 'A network: ' + property_id

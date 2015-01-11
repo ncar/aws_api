@@ -2,7 +2,7 @@ import MySQLdb
 import logging
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, date
 
 
 def db_connect(host="butterfree-bu.nexus.csiro.au", user="root", passwd="branches", db="aws"):
@@ -19,35 +19,57 @@ def db_connect(host="butterfree-bu.nexus.csiro.au", user="root", passwd="branche
     return conn
 
 
-def db_make_timeseries_query(daily_minutes, aws_id, params, start_time, end_time):
+def db_disconnect(conn):
+    conn.close()
+
+
+# TODO: remove SQL injection possibility, see http://stackoverflow.com/questions/4574609/executing-select-where-in-using-mysqldb
+def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, end_date):
     """
     Makes SQL statement for timeseries requests
 
     daily_minutes: choose 'daily' or 'minutes'
     params: choose '*' or array of column names
     """
-    sql = 'SELECT '
-    if sql == '*':
-        sql += '*'
+    query = 'SELECT '
+    if not params or params == '*':
+        query += '*'
     else:
-        sql += ', '.join(params)
-    sql += '\n'
-    sql += 'FROM '
-    if daily_minutes == 'daily':
-        sql += 'tbl_daily'
+        query += ', '.join(params.split(','))
+    query += '\n'
+    query += 'FROM '
+    if timestep == 'minutes':
+        query += 'tbl_15min'
     else:
-        sql += 'tbl_15min'
-    sql += '\n'
-    sql += 'WHERE aws_id = "' + aws_id + '"\n'
-    sql += 'AND stamp BETWEEN "' + start_time + '" AND "' + end_time + '"\n'
-    sql += 'ORDER BY stamp;'
+        query += 'tbl_daily'
+    query += '\n'
 
-    return sql
+    query += 'WHERE 1 '
+
+    if station_ids:
+        # strip of the ' 1'
+        query = query[:-2]
+        query += ' aws_id IN ("' + '","'.join(station_ids.split(',')) + '")\n'
+    else:
+        # if we have aws_ids, ignore any owners values
+        if owners:
+            # strip the ' 1'
+            query = query[:-2]
+            query += ' owner IN ("' + '","'.join(owners.split(',')) + '")\n'
+
+    #must have a start_time & end_time
+    query += 'AND stamp BETWEEN "' + start_date + '" AND "' + end_date + '"\n'
+    query += 'ORDER BY stamp;'
+
+    print query
+
+    return query
 
 
-def db_get_results(conn, query):
+# TODO: pass errors up
+def db_get_timeseries_data(conn, query):
     """
-    Executes given query agains given DB connection
+    Executes given timeseries query against given DB connection
     """
     try:
         cursor = conn.cursor()
@@ -56,18 +78,18 @@ def db_get_results(conn, query):
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
         logging.error("failed to connect to DB in get_station_aws_id()\n" + str(e))
-        sys.exit(1)
     finally:
         cursor.close()
         conn.commit()
-        conn.close()
 
     #stringify (from JSON)
     rs = []
     for row in rows:
         r = []
         for col in row:
-            if type(col) is datetime:
+            if type(col) is date:
+                r.append(col.strftime('%Y-%m-%d'))
+            elif type(col) is datetime:
                 r.append(col.strftime('%Y-%m-%dT%H:%M:%S'))
             else:
                 r.append(col)
@@ -76,9 +98,78 @@ def db_get_results(conn, query):
     return rs
 
 
-def make_aws_timeseries_json(daily_minutes, params, timeseries_data, jsonp=False, jsonp_function_name=''):
+# TODO: pass errors up
+def get_station_details_obj(conn, aws_ids=None, owners=None):
     """
-    Makes AWS timeseries formated JSON or JSON-P of given timeseries data
+    Executes a JSON array of station details for a given station ID against a given DB connection
+    """
+    print aws_ids
+    # make query
+    query = '''
+    SELECT
+    aws_id, name, district, owner, lon, lat, elevation, status
+    FROM tbl_stations
+    WHERE 1'''
+
+    if aws_ids:
+        # strip of the ' 1'
+        query = query[:-2]
+        query += ' aws_id IN (%s)\n'
+        in_p = ', '.join(map(lambda x: '%s', aws_ids.split(',')))
+        query = query % in_p
+
+    else:
+        # if we have aws_ids, ignore any owners values
+        if owners:
+            # strip the ' 1'
+            query = query[:-2]
+            query += ' owner IN (%s)\n'
+            in_p = ', '.join(map(lambda x: '%s', owners.split(',')))
+            query = query % in_p
+
+    query += ' ORDER BY name;'
+
+    # execute query
+    try:
+        cursor = conn.cursor()
+
+        if aws_ids:
+            cursor.execute(query, aws_ids.split(','))
+        elif owners:
+            cursor.execute(query, owners.split(','))
+        else:
+            cursor.execute(query)
+
+        rows = cursor.fetchall()
+
+        obj = []
+        for row in rows:
+            aws_id, name, district, owner, lon, lat, elevation, status = row
+            obj.append({
+                'aws_id': aws_id,
+                'name': name,
+                'district': district,
+                'owner': owner,
+                'lon': lon,
+                'lat': lat,
+                'elevation': elevation,
+                'status': status
+            })
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in get_station_aws_id()\n" + str(e))
+
+        obj = "ERROR: " + e.message
+    finally:
+        cursor.close()
+        conn.commit()
+
+    return obj
+
+
+def make_aws_timeseries_obj(daily_minutes, params, timeseries_data):
+    """
+    Makes AWS timeseries object for given timeseries data
     """
 
     # TODO: update * parameter list
@@ -88,7 +179,8 @@ def make_aws_timeseries_json(daily_minutes, params, timeseries_data, jsonp=False
                 'aws_id',
                 'stamp',
                 'arrival',
-                'airT','appT',
+                'airT',
+                'appT',
                 'dp',
                 'rh',
                 'deltaT',
@@ -114,16 +206,42 @@ def make_aws_timeseries_json(daily_minutes, params, timeseries_data, jsonp=False
         'no_readings': len(timeseries_data)
     }
 
-    msg = json.dumps({
+    msg = {
         'header': header,
         'data': timeseries_data
-    })
+    }
 
-    if jsonp:
-        return jsonp_function_name + '(' + msg + ');'
-    else:
-        #normal JSON
-        return msg
+    return msg
+
+
+# TODO: pass errors up
+def get_networks_obj(conn):
+    query = '''SELECT owner_id, owner_name FROM tbl_owners;'''
+
+    # execute query
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        obj = []
+        for row in rows:
+            id, name = row
+            obj.append({
+                'id': id,
+                'name': name
+            })
+
+    except MySQLdb.Error, e:
+        print "Error: %s" % (e.message)
+
+        obj = "ERROR: " + e.message
+    finally:
+        cursor.close()
+        conn.commit()
+
+    return obj
+
 
 
 '''
