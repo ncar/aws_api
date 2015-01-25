@@ -8,11 +8,12 @@ routes = Blueprint('routes', __name__)
 @routes.route('/')
 def home():
     resp = {
+        'Title': 'AWS data API',
         'Documentation': settings.BASE_URI + 'documentation',
-        'Data Entry': settings.BASE_URI + 'data',
-        'Network Register': settings.BASE_URI + 'data/network/',
-        'Station Register': settings.BASE_URI + 'data/station/',
-        'All-station Property Register': settings.BASE_URI + 'data/property/',
+        'Data Query Entry Point': settings.BASE_URI + 'data',
+        'Network Register': settings.BASE_URI + 'network/',
+        'Station Register': settings.BASE_URI + 'station/',
+        'Property Register': settings.BASE_URI + 'property/',
     }
 
     return Response(json.dumps(resp), status=200, mimetype='application/json')
@@ -136,5 +137,8 @@ def station(station_id):
     return Response(resp, status=200, mimetype='application/json')
 
 
+@routes.route('/property/')
+def proptery():
+    return 'Property'
 
 

@@ -1,11 +1,11 @@
 import MySQLdb
 import logging
 import sys
-import json
 from datetime import datetime, date
+import settings
 
 
-def db_connect(host="butterfree-bu.nexus.csiro.au", user="root", passwd="branches", db="aws"):
+def db_connect(host=settings.DB_SERVER, user=settings.DB_USR, passwd=settings.DB_PWB, db=settings.DB_DB):
     """
     Connects to the AWS database, default parameters supplied for normal connection
     """

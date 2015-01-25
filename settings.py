@@ -1,3 +1,10 @@
-PORT = 9000
+PORT = 8008
 AWS_API_HOME = 'c:\\Users\\car587\\ownCloud\\cde\\aws_api\\'
-BASE_URI = 'http://localhost:9001/'
+#AWS_API_HOME = '/var/lib/aws_api/'
+BASE_URI = 'http://localhost:8008/'
+#BASE_URI = 'http://130.220.209.15/'
+#DB_SERVER = 'localhost'
+DB_SERVER = '130.220.209.151'
+DB_USR = 'aws'
+DB_PWB = 'ASCEshort1'
+DB_DB = 'aws'
