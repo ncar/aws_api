@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>AWS API Documentation</title>
+</head>
+<body>
+    <h1>AWS API Documentation</h1>
+    <h2>API Endpoints</h2>
+    <h3>Things</h3>
+    <ul>
+        <li>
+            <strong><a href="/network/">/network/</a></strong><br />
+            networks of stations - one per 'owner', e.g. Lower Murray Water or SE NRM Board
+        </li>
+        <li>
+            <strong><a href="/station/">/station/</a></strong><br />
+            list of weatherstations
+        </li>
+        <li>
+            <strong><a href="/station/">/station/{AWS_ID}</a></strong><br />
+            a single weatherstations, e.g. Cadel''s aws_id is RMPW12 so try <a href="/station/RMPW12">/station/RMPW12</a>
+        </li>
+        <li>
+            <strong><a href="/property/">/property/</a></strong><br />
+            a list of properties (of the atmosphere) measured by stations, e.g. wind speed
+        </li>
+    </ul>
+    <h3>Functions</h3>
+       <ul>
+        <li>
+            <strong><a href="/data/">data</a></strong><br />
+            queries against the DB's data. See below
+        </li>
+    </ul>
+    <h3>Data Queries</h3>
+    <p>Data queries have a few compulsory query string arguments, namely:</p>
+    <ul>
+        <li><span style="font-family:'Courier';">timestep</span>, either <span style="font-family:'Courier';">daily</span> or <span style="font-family:'Courier';">minutes</span></li>
+        <li><span style="font-family:'Courier';">station_ids</span>, a comma-separated list of station IDs (aws_id) from the <a href="/station/">/station/</a> register, e.g. <span style="font-family:'Courier';">RMPW12,RMPW27,LMW01</span></li>
+        <li><span style="font-family:'Courier';">start_date</span>, in YYYY-MM-DD format, e.g. <span style="font-family:'Courier';">2015-01-01</span>
+        <li><span style="font-family:'Courier';">end_date</span>, in YYYY-MM-DD format, e.g. <span style="font-family:'Courier';">2015-01-02</span>
+    </ul>
+    <p>Additionally, there are several optional query string arguments:</p>
+   <ul>
+        <li><span style="font-family:'Courier';">properties</span>, a comma-separated list of property IDs from the <a href="/property/">/property/</a> register, e.g. <span style="font-family:'Courier';">airT, stamp, rain</span></li>
+   </ul>
+    <h4>Example Data Queries</h4>
+    <ul>
+        <li>
+            <a href="/data/?timestep=daily&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-03">/data/?timestep=daily&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-03</a><br />
+            Daily data for a station with date range
+        </li>
+        <li>
+            <a href="/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-01">/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-01</a><br />
+            A day's minutes data for a station
+        </li>
+        <li>
+            <a href="/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties=stamp,airT,rain">/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties=stamp,airT,rain</a>
+            A day's minutes data for a station
+        </li>
+        <li><a href=""></a></li>
+    </ul>
+    <h3>Formats</h3>
+    <p>All requests return JSON with the application/json Content-Type header. JSON-P (padded) can be requested for any request by adding a <span style="font-family:'Courier';">callback</span> query string argument, e.g.:</p>
+    <ul>
+        <li><a href="/station/RMPW13">/station/RMPW13</a> (normal JSON)</li>
+        <li><a href="/station/RMPW13?callback=func">/station/RMPW13?callback=func</a> (JSON-P)</li>
+    </ul>
+    <h2>Contact</h2>
+    <p>Nicholas Car: nick at kurrawong.net, 0427 300 292</p>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, request, render_template
 import json
 import settings
 import functions
@@ -21,7 +21,7 @@ def home():
 
 @routes.route('/documentation')
 def documentation():
-    return 'Documentation'
+    return render_template('documentation.html')
 
 
 @routes.route('/data')
@@ -52,7 +52,7 @@ def data():
         conn = functions.db_connect()
         rows = functions.db_get_timeseries_data(conn, query)
         functions.db_disconnect(conn)
-        data_obj = functions.make_aws_timeseries_obj('minutes', '*', rows)
+        data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
 
         #convert data object to JSON
         resp = json.dumps(data_obj)
@@ -138,7 +138,7 @@ def station(station_id):
 
 
 @routes.route('/property/')
-def proptery():
+def property():
     return 'Property'
 
 

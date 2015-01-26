@@ -58,10 +58,8 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
             query += ' owner IN ("' + '","'.join(owners.split(',')) + '")\n'
 
     #must have a start_time & end_time
-    query += 'AND stamp BETWEEN "' + start_date + '" AND "' + end_date + '"\n'
+    query += 'AND DATE(stamp) BETWEEN "' + start_date + '" AND "' + end_date + '"\n'
     query += 'ORDER BY stamp;'
-
-    print query
 
     return query
 
@@ -173,7 +171,8 @@ def make_aws_timeseries_obj(daily_minutes, params, timeseries_data):
     """
 
     # TODO: update * parameter list
-    if params == '*':
+    # TODO: handle both minutes and daily *
+    if not params or params == '*':
         p = [
                 'id',
                 'aws_id',
@@ -198,8 +197,7 @@ def make_aws_timeseries_obj(daily_minutes, params, timeseries_data):
                 'pressure'
         ]
     else:
-        p = ','.join(params)
-
+        p = params
     header = {
         'timestep': daily_minutes,
         'parameters': p,
