@@ -23,8 +23,13 @@ def db_disconnect(conn):
     conn.close()
 
 
+# TODO: from Tim (to routes)
+# Limit the number of results (either number of stations or number of readings)
+# Return data sorted by a given property value (ascending or descending)
+# Return stations sorted by distance from a given latitude and longitude (although I appreciate that this might be problematic)
+# Sort the JSON name/value pairs alphabetically? (This would make debugging a little easier for me.)
 # TODO: remove SQL injection possibility, see http://stackoverflow.com/questions/4574609/executing-select-where-in-using-mysqldb
-def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, end_date):
+def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, end_date, sortby='stamp', sortdir='ASC', limit=100):
     """
     Makes SQL statement for timeseries requests
 
@@ -59,7 +64,8 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
 
     #must have a start_time & end_time
     query += 'AND DATE(stamp) BETWEEN "' + start_date + '" AND "' + end_date + '"\n'
-    query += 'ORDER BY stamp;'
+    query += 'ORDER BY ' + sortby + ' ' + sortdir + '\n'
+    query += 'LIMIT ' + str(limit) + ';'
 
     return query
 
@@ -210,6 +216,35 @@ def make_aws_timeseries_obj(daily_minutes, params, timeseries_data):
     }
 
     return msg
+
+
+# TODO: pass errors up
+def get_network_obj(conn, owner_id):
+    query = '''SELECT owner_id, owner_name FROM tbl_owners WHERE owner_id = ""''' + owner_id + '''";'''
+
+    # execute query
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        obj = []
+        for row in rows:
+            id, name = row
+            obj.append({
+                'id': id,
+                'name': name
+            })
+
+    except MySQLdb.Error, e:
+        print "Error: %s" % (e.message)
+
+        obj = "ERROR: " + e.message
+    finally:
+        cursor.close()
+        conn.commit()
+
+    return obj
 
 
 # TODO: pass errors up

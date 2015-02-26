@@ -24,6 +24,10 @@ def documentation():
     return render_template('documentation.html')
 
 
+# TODO: from Tim
+# Sort the JSON name/value pairs alphabetically? (This would make debugging a little easier for me.)
+# JQuery 1.4+s $.param() method format --> timestep=minutes&station_ids[]=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties[]=stamp&properties[]=airT&properties[]=rain
+# header params as array --> {"timestep": "minutes", "no_readings": 192, "parameters": ["stamp", "airT", "rain"]}
 @routes.route('/data')
 @routes.route('/data/')
 def data():
@@ -89,10 +93,19 @@ def networks():
 def network(network_id):
     """
     A network
-
-    - list of networks
     """
-    return 'A network: ' + network_id
+    conn = functions.db_connect()
+    data_obj = functions.get_network_obj(conn, network_id)
+    functions.db_disconnect(conn)
+
+    #convert data object to JSON
+    resp = json.dumps(data_obj)
+
+    #wrap JSON-P
+    if request.args.get('callback'):
+        resp = request.args.get('callback') + '(' + resp + ');'
+
+    return Response(resp, status=200, mimetype='application/json')
 
 
 @routes.route('/station/')
@@ -116,6 +129,9 @@ def stations():
     return Response(resp, status=200, mimetype='application/json')
 
 
+# TODO: from Tim
+# Filter by stations that measure a particular property/properties, OR
+# Include a list of properties measured by each station with the station data
 @routes.route('/station/<string:station_id>')
 def station(station_id):
     """
@@ -137,6 +153,7 @@ def station(station_id):
     return Response(resp, status=200, mimetype='application/json')
 
 
+# TODO: complete or remove
 @routes.route('/property/')
 def property():
     return 'Property'
