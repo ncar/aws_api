@@ -1,0 +1,20 @@
+Station Sorting
+
+http://localhost:8008/station/?sortby=distancefrom&longlat=%28138.098727,-35.625126%29&aws_ids=RMPW18,RMPW17,RMPW27,RMPW17,RMPW29
+
+return should include 4 results in order: RMPW27, RMPW17, RMPW29, RMPW18
+
+
+http://localhost:8008/station/?sortby=distancefrom&longlat=%28138.098727,-35.625126%29&networks=SAMDB
+
+SA MDB stations only, in order RMPW27, RMPW17, RMPW29, RMPW18 etc.
+
+
+http://localhost:8008/station/?sortby=name&networks=SAMDB
+
+SA MDB stations only, in order Barmera, Berri, Bookpurnong etc.
+
+
+http://localhost:8008/station/?sortby=name
+
+Aldinga, Barmera, Berri, Binnum, etc.

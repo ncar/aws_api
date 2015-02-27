@@ -52,7 +52,10 @@ def data():
             request.args.get('owners'),
             request.args.get('properties'),
             request.args.get('start_date'),
-            request.args.get('end_date'))
+            request.args.get('end_date'),
+            request.args.get('sortby'),
+            request.args.get('sortdir'),
+            request.args.get('limit'))
         conn = functions.db_connect()
         rows = functions.db_get_timeseries_data(conn, query)
         functions.db_disconnect(conn)
@@ -116,7 +119,12 @@ def stations():
     Optional QSA parameters 'networks' or 'aws_ids' (not both)
     """
     conn = functions.db_connect()
-    data_obj = functions.get_station_details_obj(conn, aws_ids=request.args.get('aws_ids'), owners=request.args.get('networks'))
+    data_obj = functions.get_station_details_obj(conn,
+                                                 aws_ids=request.args.get('aws_ids'),
+                                                 owners=request.args.get('networks'),
+                                                 sortby=request.args.get('sortby'),
+                                                 sortdir=request.args.get('sortdir'),
+                                                 longlat=request.args.get('longlat'))
     functions.db_disconnect(conn)
 
     #convert data object to JSON
@@ -157,5 +165,3 @@ def station(station_id):
 @routes.route('/property/')
 def property():
     return 'Property'
-
-

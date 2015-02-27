@@ -24,12 +24,11 @@ def db_disconnect(conn):
 
 
 # TODO: from Tim (to routes)
-# Limit the number of results (either number of stations or number of readings)
-# Return data sorted by a given property value (ascending or descending)
-# Return stations sorted by distance from a given latitude and longitude (although I appreciate that this might be problematic)
+# DONE Limit the number of results (either number of stations or number of readings)
+# DONE Return data sorted by a given property value (ascending or descending)
 # Sort the JSON name/value pairs alphabetically? (This would make debugging a little easier for me.)
 # TODO: remove SQL injection possibility, see http://stackoverflow.com/questions/4574609/executing-select-where-in-using-mysqldb
-def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, end_date, sortby='stamp', sortdir='ASC', limit=100):
+def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, end_date, sortby, sortdir, limit):
     """
     Makes SQL statement for timeseries requests
 
@@ -64,8 +63,17 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
 
     #must have a start_time & end_time
     query += 'AND DATE(stamp) BETWEEN "' + start_date + '" AND "' + end_date + '"\n'
-    query += 'ORDER BY ' + sortby + ' ' + sortdir + '\n'
-    query += 'LIMIT ' + str(limit) + ';'
+    if sortby is not None:
+        query += 'ORDER BY ' + sortby + ' '
+    else:
+        query += 'ORDER BY stamp '
+    if sortdir is not None:
+        query += sortdir
+    else:
+        query += 'ASC'
+    if limit is not None:
+        query += '\nLIMIT ' + str(limit)
+    query += ';'
 
     return query
 
@@ -102,20 +110,33 @@ def db_get_timeseries_data(conn, query):
     return rs
 
 
-# TODO: pass errors up
-def get_station_details_obj(conn, aws_ids=None, owners=None):
+# TODO: from Tim (to routes)
+# Return stations sorted by distance from a given latitude and longitude (although I appreciate that this might be problematic)
+def get_station_details_obj(conn, aws_ids, owners, sortby, sortdir, longlat=(140,-38)):
     """
     Executes a JSON array of station details for a given station ID against a given DB connection
     """
-    print aws_ids
     # make query
-    query = '''
-    SELECT
-    aws_id, name, district, owner, lon, lat, elevation, status
-    FROM tbl_stations
-    WHERE 1'''
+    query = 'SELECT '
+    query += 'aws_id, name, district, owner, lon, lat, elevation, status'
+    if sortby == 'distancefrom':
+        if longlat is None:
+            return {'ERROR': 'You have specified sortby == distancefrom but you have not given a longlat coordinate or your coordinate is not in the format (lon,lat)'}
+        else:
+            l = str(longlat)\
+                .replace('(', '')\
+                .replace(')', '')\
+                .split(',')
+            lon = l[0]
+            lat = l[1]
+            # sanity check on distance coordinates
+            if float(lon) < 112 or float(lon) > 154 or float(lat) > -10 or float(lat) < -45:
+                return {'ERROR': 'You have specified long or lat values that are too large or too small (outside Australia'}
+            query += ', SQRT(ABS(' + lon + ' - lon) + ABS(' + lat + ' - lat)) AS distancefrom'
+    query += '\nFROM tbl_stations\n'
+    query += 'WHERE 1\n'
 
-    if aws_ids:
+    if aws_ids is not None:
         # strip of the ' 1'
         query = query[:-2]
         query += ' aws_id IN (%s)\n'
@@ -124,14 +145,22 @@ def get_station_details_obj(conn, aws_ids=None, owners=None):
 
     else:
         # if we have aws_ids, ignore any owners values
-        if owners:
+        if owners is not None:
             # strip the ' 1'
             query = query[:-2]
             query += ' owner IN (%s)\n'
             in_p = ', '.join(map(lambda x: '%s', owners.split(',')))
             query = query % in_p
 
-    query += ' ORDER BY name;'
+    if sortby is not None:
+        query += 'ORDER BY ' + sortby + ' '
+    else:
+        query += 'ORDER BY name '
+    if sortdir is not None:
+        query += sortdir
+    else:
+        query += 'ASC'
+    query += ';'
 
     # execute query
     try:
@@ -148,7 +177,10 @@ def get_station_details_obj(conn, aws_ids=None, owners=None):
 
         obj = []
         for row in rows:
-            aws_id, name, district, owner, lon, lat, elevation, status = row
+            if sortby == 'distancefrom':
+                aws_id, name, district, owner, lon, lat, elevation, status, distancefrom = row
+            else:
+                aws_id, name, district, owner, lon, lat, elevation, status = row
             obj.append({
                 'aws_id': aws_id,
                 'name': name,
@@ -163,7 +195,7 @@ def get_station_details_obj(conn, aws_ids=None, owners=None):
         print "Error %d: %s" % (e.args[0], e.args[1])
         logging.error("failed to connect to DB in get_station_aws_id()\n" + str(e))
 
-        obj = "ERROR: " + e.message
+        obj = {"ERROR": str(e[1])}
     finally:
         cursor.close()
         conn.commit()
@@ -274,6 +306,7 @@ def get_networks_obj(conn):
         conn.commit()
 
     return obj
+
 
 
 
