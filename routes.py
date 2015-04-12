@@ -148,7 +148,13 @@ def station(station_id):
     Same as /station/?aws_id=<station_id>
     """
     conn = functions.db_connect()
-    data_obj = functions.get_station_details_obj(conn, aws_ids=station_id)
+
+    data_obj = functions.get_station_details_obj(conn,
+                                                 aws_ids=station_id,
+                                                 owners=None,
+                                                 sortby=None,
+                                                 sortdir=None,
+                                                 longlat=None)
     functions.db_disconnect(conn)
 
     #convert data object to JSON

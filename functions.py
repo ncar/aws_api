@@ -43,9 +43,9 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
     query += '\n'
     query += 'FROM '
     if timestep == 'minutes':
-        query += 'tbl_15min'
+        query += 'tbl_data_minutes'
     else:
-        query += 'tbl_daily'
+        query += 'tbl_data_day'
     query += '\n'
 
     query += 'WHERE 1 '
@@ -110,9 +110,7 @@ def db_get_timeseries_data(conn, query):
     return rs
 
 
-# TODO: from Tim (to routes)
-# Return stations sorted by distance from a given latitude and longitude (although I appreciate that this might be problematic)
-def get_station_details_obj(conn, aws_ids, owners, sortby, sortdir, longlat=(140,-38)):
+def get_station_details_obj(conn, aws_ids, owners, sortby, sortdir, longlat=(140, -38)):
     """
     Executes a JSON array of station details for a given station ID against a given DB connection
     """
@@ -203,41 +201,98 @@ def get_station_details_obj(conn, aws_ids, owners, sortby, sortdir, longlat=(140
     return obj
 
 
-def make_aws_timeseries_obj(daily_minutes, params, timeseries_data):
+def make_aws_timeseries_obj(timestep, params, timeseries_data):
     """
     Makes AWS timeseries object for given timeseries data
     """
-
-    # TODO: update * parameter list
-    # TODO: handle both minutes and daily *
     if not params or params == '*':
-        p = [
-                'id',
-                'aws_id',
-                'stamp',
-                'arrival',
-                'airT',
-                'appT',
-                'dp',
-                'rh',
-                'deltaT',
-                'soilT',
-                'gsr',
-                'Wmin',
-                'Wavg',
-                'Wmax',
-                'Wdir',
-                'rain',
-                'leaf',
-                'canT',
-                'canRH',
-                'batt',
-                'pressure'
-        ]
+        if timestep == 'minutes':
+            p = [
+                    'aws_id',
+                    'stamp',
+                    'arrival',
+                    'airT',
+                    'appT',
+                    'dp',
+                    'rh',
+                    'deltaT',
+                    'soilT',
+                    'gsr',
+                    'Wmin',
+                    'Wavg',
+                    'Wmax',
+                    'Wdir',
+                    'rain',
+                    'leaf',
+                    'canT',
+                    'canRH',
+                    'batt',
+                    'pressure',
+                    'wetT',
+                    'vp'
+            ]
+        else:
+            p = [
+                    'aws_id',
+                    'stamp',
+                    'arrival',
+                    'airT_min',
+                    'airT_avg',
+                    'airT_max',
+                    'appT_min',
+                    'appT_avg',
+                    'appT_max',
+                    'dp_min',
+                    'dp_avg',
+                    'dp_max',
+                    'rh_min',
+                    'rh_avg',
+                    'rh_max',
+                    'deltaT_min',
+                    'deltaT_avg',
+                    'deltaT_max',
+                    'soilT_min',
+                    'soilT_avg',
+                    'soilT_max',
+                    'gsr_total',
+                    'Wmin',
+                    'Wavg',
+                    'Wmax',
+                    'rain_total',
+                    'leaf_min',
+                    'leaf_avg',
+                    'leaf_max',
+                    'canT_min',
+                    'canT_avg',
+                    'canT_max',
+                    'canRH_min',
+                    'canRH_avg',
+                    'canRH_max',
+                    'pressure_min',
+                    'pressure_avg',
+                    'pressure_max',
+                    'ggd_start',
+                    'ggd_total',
+                    'wetT_min',
+                    'wetT_avg',
+                    'wetT_max',
+                    'vp_min',
+                    'vp_avg',
+                    'vp_max',
+                    'batt_min',
+                    'batt_avg',
+                    'batt_max',
+                    'frost_hrs',
+                    'deg_days',
+                    'et_asce_s',
+                    'et_asce_t',
+                    'et_meyer',
+                    'readings'
+            ]
     else:
-        p = params
+        p = params.split(',')
     header = {
-        'timestep': daily_minutes,
+        'timestep': timestep,
         'parameters': p,
         'no_readings': len(timeseries_data)
     }
@@ -250,9 +305,14 @@ def make_aws_timeseries_obj(daily_minutes, params, timeseries_data):
     return msg
 
 
+# TODO: complete
+def get_stations_parameters(aws_id):
+    pass
+
+
 # TODO: pass errors up
 def get_network_obj(conn, owner_id):
-    query = '''SELECT owner_id, owner_name FROM tbl_owners WHERE owner_id = ""''' + owner_id + '''";'''
+    query = '''SELECT owner_id, owner_name FROM tbl_owners WHERE owner_id = "''' + owner_id + '''";'''
 
     # execute query
     try:
@@ -307,43 +367,3 @@ def get_networks_obj(conn):
 
     return obj
 
-
-
-
-'''
-#every unique key on the table must use every column in the tables partitioning expression
-CREATE TABLE tbl_15min_partition (
-  aws_id VARCHAR(21) DEFAULT NULL,
-  stamp DATETIME DEFAULT NULL,
-  arrival TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  airT DOUBLE DEFAULT NULL,
-  appT DOUBLE DEFAULT NULL,
-  dp DOUBLE DEFAULT NULL,
-  rh DOUBLE DEFAULT NULL,
-  deltaT DOUBLE DEFAULT NULL,
-  soilT DOUBLE DEFAULT NULL,
-  gsr DOUBLE DEFAULT NULL,
-  Wmin DOUBLE DEFAULT NULL,
-  Wavg DOUBLE DEFAULT NULL,
-  Wmax DOUBLE DEFAULT NULL,
-  Wdir DOUBLE DEFAULT NULL,
-  rain DOUBLE DEFAULT NULL,
-  leaf DOUBLE DEFAULT NULL,
-  canT DOUBLE DEFAULT NULL,
-  canRH DOUBLE DEFAULT NULL,
-  batt DOUBLE DEFAULT NULL,
-  pressure DOUBLE DEFAULT NULL,
-  KEY idx_awsid_stamp (aws_id,stamp),
-  KEY idx_stamp (stamp),
-  KEY idx_stamp_awsid (stamp,aws_id)
-) ENGINE=MYISAM DEFAULT CHARSET=latin1
-PARTITION BY RANGE (YEAR(stamp)) (
-    PARTITION p0 VALUES LESS THAN (2010),
-    PARTITION p1 VALUES LESS THAN (2011),
-    PARTITION p2 VALUES LESS THAN (2012),
-    PARTITION p3 VALUES LESS THAN (2013),
-    PARTITION p4 VALUES LESS THAN (2014),
-    PARTITION p5 VALUES LESS THAN (2015),
-    PARTITION p6 VALUES LESS THAN MAXVALUE
-);
-'''

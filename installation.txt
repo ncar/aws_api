@@ -10,8 +10,8 @@ sudo aptitude install mysql-server mysql-client
 #
 # Getting the API code
 #
-sudo mkdir /var/lib/aws_api
-cd /var/lib/aws_api
+sudo mkdir /opt/aws_api
+cd /opt/aws_api
 sudo git clone https://github.com/ncar/aws_api.git .
 
 #
@@ -19,8 +19,8 @@ sudo git clone https://github.com/ncar/aws_api.git .
 #
 sudo pip install flask
 #to avoid a missing dependency on Ubuntu
-sudo apt-get install libmysqlclient-dev
-sudo apt-get install python-dev
+sudo aptitude install libmysqlclient-dev
+sudo aptitude install python-dev
 sudo pip install MySQL-python
 #root pwd: <MAIN_AWS_PWD>
 
@@ -34,3 +34,8 @@ sudo service mysql restart
 CREATE USER 'aws'@'%' IDENTIFIED BY '<MAIN_AWS_PWD>';
 GRANT ALL ON aws.* TO 'aws'@'%';
 FLUSH PRIVILEGES;
+
+
+#
+# Populating the DB
+#

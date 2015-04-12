@@ -29,8 +29,25 @@
     <h3>Functions</h3>
        <ul>
         <li>
-            <strong><a href="/data/">data</a></strong><br />
-            queries against the DB's data. See below
+            <strong>data</strong><br />
+            queries against the DB's data. See 'Data Queries' below
+        </li>
+        <li>
+            <strong>station parameter listing</strong><br />
+            <ul>
+                <li>get list of measured parameters for a station, e.g. <a href="/station/RMPW18?view=parameters">/station/RMPW18?view=parameters</a></li>
+            </ul>
+        </li>
+        <li>
+            <strong>station searches</strong><br />
+            queries against the DB's station lists
+            <ul>
+                <li>get details for all stations, e.g. <a href="/station/">/station/</a> </li>
+                <li>get details for some stations by AWS_ID, e.g. <a href="/station/?aws_ids=RMPW12,LEW001,LMW04">/station/?aws_ids=RMPW12,LEW001,LMW04</a></li>
+                <li>get details for stations sorted by a propety, e.g. <a href="/station/?sortby=name&sortdir=DESC">/station/?sortby=name&sortdir=DESC</a> (sort by name descending), <a href="/station/?sortby=elevation&sortdir=ASC">/station/?sortby=elevation&sortdir=ASC</a> (sort by elevation ascending), </li>
+                <li>get details for stations in distance order from a lat/long, e.g. <a href="/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)">/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)</a> </li>
+                <li>get details for stations in distance order from a lat/long but for only some networks, e.g. <a href="/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)&networks=SAMDB,LMW">/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)&networks=SAMDB,LMW</a> </li>
+            </ul>
         </li>
     </ul>
     <h3>Data Queries</h3>
@@ -59,7 +76,6 @@
             <a href="/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties=stamp,airT,rain">/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties=stamp,airT,rain</a>
             A day's minutes data for a station
         </li>
-        <li><a href=""></a></li>
     </ul>
     <h3>Formats</h3>
     <p>All requests return JSON with the application/json Content-Type header. JSON-P (padded) can be requested for any request by adding a <span style="font-family:'Courier';">callback</span> query string argument, e.g.:</p>
