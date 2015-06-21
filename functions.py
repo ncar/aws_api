@@ -398,7 +398,6 @@ def get_stations_parameters(conn, station_id):
 
         properties = []
         for row in rows:
-            print row
             if row[0] is not None:
                 properties.append('airT')
             if row[1] is not None:
