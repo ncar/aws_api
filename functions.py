@@ -74,8 +74,8 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
             allowed_params = ['aws_id', 'stamp', 'arrival', 'airT', 'appT', 'dp', 'rh', 'deltaT', 'soilT', 'gsr', 'Wmin', 'Wavg', 'Wmax', 'Wdir', 'rain', 'leaf', 'canT', 'canRH', 'batt', 'pressure', 'wetT', 'vp']
         else:
             allowed_params = ['aws_id', 'stamp', 'arrival', 'airT_min', 'airT_avg', 'airT_max', 'appT_min', 'appT_avg', 'appT_max', 'dp_min', 'dp_avg', 'dp_max', 'rh_min', 'rh_avg', 'rh_max', 'deltaT_min', 'deltaT_avg', 'deltaT_max', 'soilT_min', 'soilT_avg', 'soilT_max', 'gsr_total', 'Wmin', 'Wavg', 'Wmax', 'rain_total', 'leaf_min', 'leaf_avg', 'leaf_max', 'canT_min', 'canT_avg', 'canT_max', 'canRH_min', 'canRH_avg', 'canRH_max', 'pressure_min', 'pressure_avg', 'pressure_max', 'gdd_start', 'gdd_total', 'wetT_min', 'wetT_avg', 'wetT_max', 'vp_min', 'vp_avg', 'vp_max', 'batt_min', 'batt_avg', 'batt_max', 'frost_hrs', 'deg_days', 'et_asce_s', 'et_asce_t', 'et_meyer', 'readings']
-    if not sortby in allowed_params:
-        return [False, 'sortby is not a valid parameter. It can be left unset.']
+        if not sortby in allowed_params:
+            return [False, 'sortby is not a valid parameter. It can be left unset.']
 
     # validate sortdir
     if sortdir:
@@ -83,12 +83,13 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
             return [False, 'If set, sortdir must be \'ASC\', \'DESC\'. If not set, \'ASC\' is used']
 
     # validate limit
-    try:
-        int(limit)
-        if int(limit) < 0:
-            raise ValueError
-    except ValueError:
-        return [False, 'limit must be a positive integer']
+    if limit:
+        try:
+            int(limit)
+            if int(limit) < 0:
+                raise ValueError
+        except ValueError:
+            return [False, 'limit, if set, must be a positive integer']
 
     # all user inputs validated, make query
     query = 'SELECT '
