@@ -5,6 +5,11 @@ import functions
 routes = Blueprint('routes', __name__)
 
 
+@routes.route('/favicon.ico')
+def favicon():
+    return ''
+
+
 @routes.route('/')
 def home():
     resp = {
@@ -55,7 +60,7 @@ def data():
     # query ok so proceed to connect
     try:
         conn = functions.db_connect()
-        rows = functions.db_get_timeseries_data(conn, query)
+        rows = functions.db_get_timeseries_data(conn, query[1])
         functions.db_disconnect(conn)
 
         data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
@@ -121,21 +126,24 @@ def stations():
     """
     conn = functions.db_connect()
     data_obj = functions.get_station_details_obj(conn,
-                                                 aws_ids=request.args.get('aws_ids'),
+                                                 station_ids=request.args.get('aws_ids'),
                                                  owners=request.args.get('networks'),
                                                  sortby=request.args.get('sortby'),
                                                  sortdir=request.args.get('sortdir'),
                                                  longlat=request.args.get('longlat'))
     functions.db_disconnect(conn)
 
-    #convert data object to JSON
-    resp = json.dumps(data_obj)
+    if data_obj[0]:
+        #convert data object to JSON
+        resp = json.dumps(data_obj[1])
 
-    #wrap JSON-P
-    if request.args.get('callback'):
-        resp = request.args.get('callback') + '(' + resp + ');'
+        #wrap JSON-P
+        if request.args.get('callback'):
+            resp = request.args.get('callback') + '(' + resp + ');'
 
-    return Response(resp, status=200, mimetype='application/json')
+        return Response(resp, status=200, mimetype='application/json')
+    else:
+        return Response(data_obj[1], status=400, mimetype='text/plain')
 
 
 # TODO: from Tim
@@ -151,24 +159,44 @@ def station(station_id):
     conn = functions.db_connect()
 
     data_obj = functions.get_station_details_obj(conn,
-                                                 aws_ids=station_id,
+                                                 station_ids=station_id,
                                                  owners=None,
                                                  sortby=None,
                                                  sortdir=None,
-                                                 longlat=None)
+                                                 longlat=None,
+                                                 properties=True)
+
+    properties = functions.get_stations_parameters(conn, station_id)
+
     functions.db_disconnect(conn)
 
-    #convert data object to JSON
-    resp = json.dumps(data_obj)
+    if data_obj[0]:
+        if properties[0]:
+            data_obj[1][0]['properties'] = properties[1]
 
-    #wrap JSON-P
-    if request.args.get('callback'):
-        resp = request.args.get('callback') + '(' + resp + ');'
+            #convert data object to JSON
+            resp = json.dumps(data_obj[1][0])
 
-    return Response(resp, status=200, mimetype='application/json')
+            #wrap JSON-P
+            if request.args.get('callback'):
+                resp = request.args.get('callback') + '(' + resp + ');'
+
+            return Response(resp, status=200, mimetype='application/json')
+        else:
+            return Response(properties[1], status=400, mimetype='text/plain')
+    else:
+        return Response(data_obj[1], status=400, mimetype='text/plain')
 
 
-# TODO: complete or remove
-@routes.route('/property/')
-def property():
-    return 'Property'
+@routes.route('/properties/')
+def properties():
+    if not request.args.get('station_id'):
+        return Response('You must set a query string arg of station_id for this call', status=400, mimetype='text/plain')
+
+    conn = functions.db_connect()
+    properties = functions.get_stations_parameters(conn, request.args.get('station_id'))
+    functions.db_disconnect(conn)
+    if properties[0]:
+        return Response(json.dumps(properties[1]), status=400, mimetype='application/json')
+    else:
+        return Response(properties[1], status=400, mimetype='text/plain')
