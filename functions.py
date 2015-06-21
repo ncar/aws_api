@@ -2,6 +2,7 @@ import MySQLdb
 import logging
 import sys
 from datetime import datetime, date
+import re
 import settings
 
 
@@ -48,9 +49,48 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
             allowed_params = ['aws_id', 'stamp', 'arrival', 'airT_min', 'airT_avg', 'airT_max', 'appT_min', 'appT_avg', 'appT_max', 'dp_min', 'dp_avg', 'dp_max', 'rh_min', 'rh_avg', 'rh_max', 'deltaT_min', 'deltaT_avg', 'deltaT_max', 'soilT_min', 'soilT_avg', 'soilT_max', 'gsr_total', 'Wmin', 'Wavg', 'Wmax', 'rain_total', 'leaf_min', 'leaf_avg', 'leaf_max', 'canT_min', 'canT_avg', 'canT_max', 'canRH_min', 'canRH_avg', 'canRH_max', 'pressure_min', 'pressure_avg', 'pressure_max', 'gdd_start', 'gdd_total', 'wetT_min', 'wetT_avg', 'wetT_max', 'vp_min', 'vp_avg', 'vp_max', 'batt_min', 'batt_avg', 'batt_max', 'frost_hrs', 'deg_days', 'et_asce_s', 'et_asce_t', 'et_meyer', 'readings']
 
         for param in params.split(','):
-            if param not in allowed_params:
-                return [False, 'Parameter ' + param + ' is not allowed. See http{IP_ADDRESS}/documentation for allowed param values']
+            if not param in allowed_params:
+                return [False, 'Parameter ' + param + ' is not found in the parameters list']
 
+    # validate station ID
+    if ',' in station_ids:
+        for station_id in station_ids.split(','):
+            if not station_id in ['ADLD01', 'ADLD02', 'AWNRM01', 'AWNRM02', 'AWNRM03', 'AWNRM04', 'AWNRM05', 'BIN001', 'BOW001', 'CAN001', 'CAR001', 'CON001', 'COO001', 'GRY001', 'JES001', 'JOY001', 'LEW001', 'LMW01', 'LMW02', 'LMW03', 'LMW04', 'LMW05', 'LMW06', 'LMW07', 'LMW08', 'LMW09', 'LMW10', 'MAC001', 'MIN001', 'MPWA01', 'MPWA02', 'MPWA03', 'MPWA04', 'MPWA06', 'MTM001', 'MVGWT01', 'MVGWT02', 'MVGWT03', 'MVGWT04', 'MVGWT05', 'MVGWT06', 'MVGWT07', 'MVGWT08', 'MVGWT09', 'RIV001', 'RMPW01', 'RMPW02', 'RMPW03', 'RMPW04', 'RMPW05', 'RMPW06', 'RMPW07', 'RMPW08', 'RMPW09', 'RMPW10', 'RMPW11', 'RMPW12', 'RMPW13', 'RMPW14', 'RMPW15', 'RMPW16', 'RMPW17', 'RMPW18', 'RMPW19', 'RMPW20', 'RMPW21', 'RMPW22', 'RMPW23', 'RMPW24', 'RMPW25', 'RMPW26', 'RMPW27', 'RMPW28', 'RMPW29', 'RMPW30', 'RMPW31', 'RMPW32', 'ROB001', 'RPWA05', 'STG001', 'SYM001', 'TAT001', 'TBRG01', 'TBRG02', 'TBRG03', 'TBRG04', 'TBRG06', 'TBRG08', 'TBRG09', 'TIN001', 'WIR001']:
+                return [False, 'station_id ' + station_id + ' is not found in the stations list']
+
+    # validate start & end times
+    if not start_date or not end_date:
+        return [False, 'start and end datest must be supplied (in YYYY-MM-DD formats)']
+
+    if not re.match('\d\d\d\d-\d\d-\d\d', start_date):
+        return [False, 'start date is not in the correct format (YYYY-MM-DD)']
+
+    if not re.match('\d\d\d\d-\d\d-\d\d', end_date):
+        return [False, 'end date is not in the correct format (YYYY-MM-DD)']
+
+    # validate sortby
+    if sortby:
+        if timestep == 'minutes':
+            allowed_params = ['aws_id', 'stamp', 'arrival', 'airT', 'appT', 'dp', 'rh', 'deltaT', 'soilT', 'gsr', 'Wmin', 'Wavg', 'Wmax', 'Wdir', 'rain', 'leaf', 'canT', 'canRH', 'batt', 'pressure', 'wetT', 'vp']
+        else:
+            allowed_params = ['aws_id', 'stamp', 'arrival', 'airT_min', 'airT_avg', 'airT_max', 'appT_min', 'appT_avg', 'appT_max', 'dp_min', 'dp_avg', 'dp_max', 'rh_min', 'rh_avg', 'rh_max', 'deltaT_min', 'deltaT_avg', 'deltaT_max', 'soilT_min', 'soilT_avg', 'soilT_max', 'gsr_total', 'Wmin', 'Wavg', 'Wmax', 'rain_total', 'leaf_min', 'leaf_avg', 'leaf_max', 'canT_min', 'canT_avg', 'canT_max', 'canRH_min', 'canRH_avg', 'canRH_max', 'pressure_min', 'pressure_avg', 'pressure_max', 'gdd_start', 'gdd_total', 'wetT_min', 'wetT_avg', 'wetT_max', 'vp_min', 'vp_avg', 'vp_max', 'batt_min', 'batt_avg', 'batt_max', 'frost_hrs', 'deg_days', 'et_asce_s', 'et_asce_t', 'et_meyer', 'readings']
+    if not sortby in allowed_params:
+        return [False, 'sortby is not a valid parameter. It can be left unset.']
+
+    # validate sortdir
+    if sortdir:
+        if not sortdir in ['ASC', 'DESC']:
+            return [False, 'If set, sortdir must be \'ASC\', \'DESC\'. If not set, \'ASC\' is used']
+
+    # validate limit
+    try:
+        int(limit)
+        if int(limit) < 0:
+            raise ValueError
+    except ValueError:
+        return [False, 'limit must be a positive integer']
+
+    # all user inputs validated, make query
     query = 'SELECT '
     if not params or params == '*':
         query += '*'
@@ -77,7 +117,6 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
             query = query[:-2]
             query += ' owner IN ("' + '","'.join(owners.split(',')) + '")\n'
 
-    #must have a start_time & end_time
     query += 'AND DATE(stamp) BETWEEN "' + start_date + '" AND "' + end_date + '"\n'
     if sortby is not None:
         query += 'ORDER BY ' + sortby + ' '

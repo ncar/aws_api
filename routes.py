@@ -36,44 +36,41 @@ def data():
 
     - list subregisters: networks, stations, properties
     """
-    errors = []
+    # attempts to make the query
+    query = functions.db_make_timeseries_query(
+        request.args.get('timestep'),
+        request.args.get('station_ids'),
+        request.args.get('owners'),
+        request.args.get('properties'),
+        request.args.get('start_date'),
+        request.args.get('end_date'),
+        request.args.get('sortby'),
+        request.args.get('sortdir'),
+        request.args.get('limit'))
 
-    # check for bad parameters
-    if not request.args.get('start_date') or not request.args.get('end_date'):
-        errors.append('You must, at least, specify a start_date and end_date query string argument')
+    # return a 400 if the query cannot be made
+    if not query[0]:
+        return Response(json.dumps({'ERRORS': query[1]}), status=400, mimetype='application/json')
 
-    if len(errors) > 0:
-        return Response(json.dumps({'ERRORS': errors}), status=400, mimetype='application/json')
-    else:
-        # parameters ok, make the query
-        query = functions.db_make_timeseries_query(
-            request.args.get('timestep'),
-            request.args.get('station_ids'),
-            request.args.get('owners'),
-            request.args.get('properties'),
-            request.args.get('start_date'),
-            request.args.get('end_date'),
-            request.args.get('sortby'),
-            request.args.get('sortdir'),
-            request.args.get('limit'))
-        # ensure we have a valid query
-        if query[0]:
-            conn = functions.db_connect()
-            rows = functions.db_get_timeseries_data(conn, query)
-            functions.db_disconnect(conn)
-            data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
+    # query ok so proceed to connect
+    try:
+        conn = functions.db_connect()
+        rows = functions.db_get_timeseries_data(conn, query)
+        functions.db_disconnect(conn)
+    except Exception, e:
+        return Response(json.dumps({'ERRORS': 'DB error: ' + e.message}), status=500, mimetype='application/json')
 
-            #convert data object to JSON
-            resp = json.dumps(data_obj)
 
-            #wrap JSON-P
-            if request.args.get('callback'):
-                resp = request.args.get('callback') + '(' + resp + ');'
+    data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
 
-            return Response(resp, status=200, mimetype='application/json')
-        # we have an invalid query, return error to user
-        else:
-            return Response(query[1], status=400, mimetype='text/plain')
+    #convert data object to JSON
+    resp = json.dumps(data_obj)
+
+    #wrap JSON-P
+    if request.args.get('callback'):
+        resp = request.args.get('callback') + '(' + resp + ');'
+
+    return Response(resp, status=200, mimetype='application/json')
 
 
 @routes.route('/network/')
