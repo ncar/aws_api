@@ -35,17 +35,21 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
     daily_minutes: choose 'daily' or 'minutes'
     params: choose '*' or array of column names
     """
-    # validate parameters
-    if params != '*':
-        for param in params:
-            if param not in []:
-                return [False, 'Parameter ' + param + ' is not allowed. See http{IP_ADDRESS}/documentation for allowed param values']
-
     # validate timestep, only if we have one, else assume daily
     if timestep:
         if timestep not in ['daily', 'minutes']:
             return [False, 'Timestep must be either \'daily\' or \'minutes\' or left blank, in which case it defaults to daily']
 
+    # validate parameters
+    if params != '*':
+        if timestep == 'minutes':
+            allowed_params = ['aws_id', 'stamp', 'arrival', 'airT', 'appT', 'dp', 'rh', 'deltaT', 'soilT', 'gsr', 'Wmin', 'Wavg', 'Wmax', 'Wdir', 'rain', 'leaf', 'canT', 'canRH', 'batt', 'pressure', 'wetT', 'vp']
+        else:
+            allowed_params = ['aws_id', 'stamp', 'arrival', 'airT_min', 'airT_avg', 'airT_max', 'appT_min', 'appT_avg', 'appT_max', 'dp_min', 'dp_avg', 'dp_max', 'rh_min', 'rh_avg', 'rh_max', 'deltaT_min', 'deltaT_avg', 'deltaT_max', 'soilT_min', 'soilT_avg', 'soilT_max', 'gsr_total', 'Wmin', 'Wavg', 'Wmax', 'rain_total', 'leaf_min', 'leaf_avg', 'leaf_max', 'canT_min', 'canT_avg', 'canT_max', 'canRH_min', 'canRH_avg', 'canRH_max', 'pressure_min', 'pressure_avg', 'pressure_max', 'gdd_start', 'gdd_total', 'wetT_min', 'wetT_avg', 'wetT_max', 'vp_min', 'vp_avg', 'vp_max', 'batt_min', 'batt_avg', 'batt_max', 'frost_hrs', 'deg_days', 'et_asce_s', 'et_asce_t', 'et_meyer', 'readings']
+
+        for param in params.split(','):
+            if param not in allowed_params:
+                return [False, 'Parameter ' + param + ' is not allowed. See http{IP_ADDRESS}/documentation for allowed param values']
 
     query = 'SELECT '
     if not params or params == '*':
