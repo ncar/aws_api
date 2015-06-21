@@ -56,19 +56,24 @@ def data():
             request.args.get('sortby'),
             request.args.get('sortdir'),
             request.args.get('limit'))
-        conn = functions.db_connect()
-        rows = functions.db_get_timeseries_data(conn, query)
-        functions.db_disconnect(conn)
-        data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
+        # ensure we have a valid query
+        if query[0]:
+            conn = functions.db_connect()
+            rows = functions.db_get_timeseries_data(conn, query)
+            functions.db_disconnect(conn)
+            data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
 
-        #convert data object to JSON
-        resp = json.dumps(data_obj)
+            #convert data object to JSON
+            resp = json.dumps(data_obj)
 
-        #wrap JSON-P
-        if request.args.get('callback'):
-            resp = request.args.get('callback') + '(' + resp + ');'
+            #wrap JSON-P
+            if request.args.get('callback'):
+                resp = request.args.get('callback') + '(' + resp + ');'
 
-        return Response(resp, status=200, mimetype='application/json')
+            return Response(resp, status=200, mimetype='application/json')
+        # we have an invalid query, return error to user
+        else:
+            return Response(query[1], status=400, mimetype='text/plain')
 
 
 @routes.route('/network/')

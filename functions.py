@@ -35,6 +35,18 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
     daily_minutes: choose 'daily' or 'minutes'
     params: choose '*' or array of column names
     """
+    # validate parameters
+    if params != '*':
+        for param in params:
+            if param not in []:
+                return [False, 'Parameter ' + param + ' is not allowed. See http{IP_ADDRESS}/documentation for allowed param values']
+
+    # validate timestep, only if we have one, else assume daily
+    if timestep:
+        if timestep not in ['daily', 'minutes']:
+            return [False, 'Timestep must be either \'daily\' or \'minutes\' or left blank, in which case it defaults to daily']
+
+
     query = 'SELECT '
     if not params or params == '*':
         query += '*'
@@ -75,7 +87,7 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
         query += '\nLIMIT ' + str(limit)
     query += ';'
 
-    return query
+    return [True, query]
 
 
 # TODO: pass errors up
@@ -206,6 +218,10 @@ def make_aws_timeseries_obj(timestep, params, timeseries_data):
     Makes AWS timeseries object for given timeseries data
     """
     if not params or params == '*':
+        # ensure default timestep is daily
+        if not timestep:
+            timestep = 'daily'
+
         if timestep == 'minutes':
             p = [
                     'aws_id',
