@@ -57,20 +57,19 @@ def data():
         conn = functions.db_connect()
         rows = functions.db_get_timeseries_data(conn, query)
         functions.db_disconnect(conn)
+
+        data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
+
+        #convert data object to JSON
+        resp = json.dumps(data_obj)
+
+        #wrap JSON-P
+        if request.args.get('callback'):
+            resp = request.args.get('callback') + '(' + resp + ');'
+
+        return Response(resp, status=200, mimetype='application/json')
     except Exception, e:
         return Response(json.dumps({'ERRORS': 'DB error: ' + e.message}), status=500, mimetype='application/json')
-
-
-    data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('properties'), rows)
-
-    #convert data object to JSON
-    resp = json.dumps(data_obj)
-
-    #wrap JSON-P
-    if request.args.get('callback'):
-        resp = request.args.get('callback') + '(' + resp + ');'
-
-    return Response(resp, status=200, mimetype='application/json')
 
 
 @routes.route('/network/')
