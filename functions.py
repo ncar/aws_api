@@ -588,11 +588,43 @@ def get_parameter_col_names_station_from_scm(conn, station_id):
     return props
 
 
-def get_parameter_col_names_station(conn, station_id):
-    if conn is None:
-            conn = db_connect()
-
-    sql = '''SELECT parameter_id FROM tbl_stations_parameters WHERE aws_id = "''' + station_id + '''";'''
+def get_parameter_details(conn, station_id, timestep):
+    if station_id:
+        if timestep == 'daily':
+            # station's daily parameters
+            sql =   '''
+                    SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_parameters WHERE db_column IN (
+                    SELECT parameter_id_daily
+                    FROM tbl_stations_parameters JOIN tbl_parameters_minutes_daily
+                    ON tbl_stations_parameters.parameter_id = tbl_parameters_minutes_daily.parameter_id_minutes
+                    WHERE aws_id = "RMPW12")
+                    AND timestep = 'daily';
+                    '''
+        else:
+            # station's minutes parameters
+            sql =   '''
+                    SELECT parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_stations_parameters JOIN tbl_parameters
+                    ON tbl_stations_parameters.parameter_id = tbl_parameters.db_column
+                    WHERE aws_id = "RMPW12"
+                    AND timestep = 'minutes';
+                    '''
+    else:
+        if timestep == 'daily':
+            # all daily parameters
+            sql =   '''
+                    SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_parameters
+                    WHERE timestep = 'daily';
+                    '''
+        else:
+            # all minutes parameters
+            sql =   '''
+                    SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_parameters
+                    WHERE timestep = 'minutes';
+                    '''
 
     try:
         if conn is None:
@@ -601,10 +633,19 @@ def get_parameter_col_names_station(conn, station_id):
         cursor = conn.cursor()
         cursor.execute(sql)
         rows = cursor.fetchall()
-        r = []
-        for row in rows:
-            r.append(row[0])
-        return r
+
+        header = [
+            'parameter_id',
+            'name',
+            'aggregation',
+            'datatype',
+            'units'
+        ]
+
+        return {
+            'header': header,
+            'data': [list(i) for i in rows]
+        }
 
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
@@ -643,92 +684,8 @@ def get_stations_with_parameter(conn, parameter_id):
         #conn.close()
 
 
-def get_parameter_details_station(conn, parameter_db_col_names):
-    sql = '''
-    SELECT  db_column, name, aggregation, datatype, units  FROM tbl_parameters WHERE db_column IN
-    (\'''' + '\',\''.join(parameter_db_col_names) + '''\')
-    AND timestep = 'minutes';'''
-
-    try:
-        if conn is None:
-            conn = db_connect()
-
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-        return rows
-        #r = []
-        #for row in rows:
-        #    r.append(row)
-        #return r
-
-    except MySQLdb.Error, e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-        logging.error("failed to connect to DB in readings_vars_additions_from_db()\n" + str(e))
-        sys.exit(1)
-    finally:
-        cursor.close()
-        conn.commit()
-        #conn.close()
-
-
-def get_parameter_details_all(conn):
-    sql = '''
-    SELECT  db_column, name, aggregation, datatype, units  FROM tbl_parameters WHERE timestep = 'minutes'
-    AND db_column NOT IN ('aws_id', 'arrival', 'stamp');
-    '''
-
-    try:
-        if conn is None:
-            conn = db_connect()
-
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-        return rows
-        #r = []
-        #for row in rows:
-        #    r.append(row)
-        #return r
-
-    except MySQLdb.Error, e:
-        print "Error %d: %s" % (e.args[0], e.args[1])
-        logging.error("failed to connect to DB in readings_vars_additions_from_db()\n" + str(e))
-        sys.exit(1)
-    finally:
-        cursor.close()
-        conn.commit()
-        #conn.close()
-
-
-def get_stations_parameters(conn, station_id):
-    if conn is None:
-        conn = db_connect()
-
-    if station_id:
-        props = get_parameter_col_names_station(conn, station_id)
-        deets = get_parameter_details_station(conn, props)
-    else:
-        deets = get_parameter_details_all(conn)
-
-    # disconnect from DB
-    db_disconnect(conn)
-
-    header = [
-        'parameter_id',
-        'name',
-        'aggregation',
-        'datatype',
-        'units'
-    ]
-    return {
-        'header': header,
-        'data': deets
-    }
-
-
 # TODO: don't forget to add in cron for this
-def make_station_parameter_lookup():
+def make_station_parameter_lookup_minutes():
     try:
         # make a DB connection
         conn = db_connect()
@@ -742,15 +699,13 @@ def make_station_parameter_lookup():
         # get all station ids
         sql = '''SELECT aws_id FROM tbl_stations;'''
         cursor.execute(sql)
-        rows = cursor.fetchall()
 
         # get each station's parameters
         stations_parameters = []
-        for row in rows:
-            props = get_stations_parameters(row[0])
+        for aws in cursor.fetchall():
             # store each station's parameters for insertion
-            for prop in props['data']:
-                stations_parameters.append([row[0], prop[0]])
+            for param in get_parameter_col_names_station_from_scm(conn, aws[0]):
+                stations_parameters.append([aws[0], param])
 
         # make the insert SQL
         sql = 'INSERT INTO tbl_stations_parameters (aws_id, parameter_id) VALUES \n'

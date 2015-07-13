@@ -190,10 +190,4 @@ def station(station_id):
 
 @routes.route('/parameters/')
 def parameters():
-    if request.args.get('station_id'):
-        return Response(json.dumps(functions.get_stations_parameters(None, request.args.get('station_id'))), status=200, mimetype='application/json')
-    elif request.args.get('parameter_id'):
-        return Response(json.dumps(functions.get_stations_with_parameter(None, request.args.get('parameter_id'))), status=200, mimetype='application/json')
-    else:
-        #return Response('You must set a query string arg of station_id for this call', status=400, mimetype='text/plain')
-        return Response(json.dumps(functions.get_stations_parameters(None, None)), status=200, mimetype='application/json')
+    return Response(json.dumps(functions.get_parameter_details(None, request.args.get('station_id'), request.args.get('timestep'))), status=200, mimetype='application/json')

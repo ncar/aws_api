@@ -17,4 +17,4 @@ if __name__ == '__main__':
                         datefmt='%Y-%m-%dT%H:%M:%S',
                         format='%(asctime)s %(levelname)s %(message)s')
 
-    app.run(host='0.0.0.0', port=settings.PORT)
+    app.run(host='0.0.0.0', port=settings.PORT, debug=True)
