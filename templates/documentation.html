@@ -18,12 +18,12 @@
             list of weatherstations
         </li>
         <li>
-            <strong><a href="/station/">/station/{AWS_ID}</a></strong><br />
+            <strong><a href="/station/">/station/{STATION_ID}</a></strong><br />
             a single weatherstations, e.g. Cadel''s aws_id is RMPW12 so try <a href="/station/RMPW12">/station/RMPW12</a>
         </li>
         <li>
-            <strong><a href="/property/">/property/</a></strong><br />
-            a list of properties (of the atmosphere) measured by stations, e.g. wind speed
+            <strong><a href="/parameters/">/parameters/</a></strong><br />
+            a list of parameters (of the atmosphere) measured by stations, e.g. wind speed
         </li>
     </ul>
     <h3>Functions</h3>
@@ -37,10 +37,18 @@
             queries against the DB's station lists
             <ul>
                 <li>get details for all stations, e.g. <a href="/station/">/station/</a> </li>
-                <li>get details for some stations by AWS_ID, e.g. <a href="/station/?aws_ids=RMPW12,LEW001,LMW04">/station/?aws_ids=RMPW12,LEW001,LMW04</a></li>
-                <li>get details for stations sorted by a propety, e.g. <a href="/station/?sortby=name&sortdir=DESC">/station/?sortby=name&sortdir=DESC</a> (sort by name descending), <a href="/station/?sortby=elevation&sortdir=ASC">/station/?sortby=elevation&sortdir=ASC</a> (sort by elevation ascending), </li>
+                <li>get details for some stations by STATION_ID, e.g. <a href="/station/?aws_ids=RMPW12,LEW001,LMW04">/station/?aws_ids=RMPW12,LEW001,LMW04</a></li>
+                <li>get details for stations sorted by a parameter, e.g. <a href="/station/?sortby=name&sortdir=DESC">/station/?sortby=name&sortdir=DESC</a> (sort by name descending), <a href="/station/?sortby=elevation&sortdir=ASC">/station/?sortby=elevation&sortdir=ASC</a> (sort by elevation ascending), </li>
                 <li>get details for stations in distance order from a lat/long, e.g. <a href="/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)">/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)</a> </li>
                 <li>get details for stations in distance order from a lat/long but for only some networks, e.g. <a href="/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)&networks=SAMDB,LMW">/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)&networks=SAMDB,LMW</a> </li>
+            </ul>
+        </li>
+        <li>
+            <strong>parameters &amp; stations</strong><br />
+            <ul>
+                <li>get details for all parameters available for all stations: <a href="/parameters/">/parameters/</a></li>
+                <li>get details for a station's parameters: <strong>/parameters/?station_id={STATION_ID}</strong>, e.g. for Cadell: <a href="/parameters/?station_id=RMPW12">/parameters/?station_id=RMPW12</a></li>
+                <li>get the station that record a parameter: <strong>/parameters/?parameter_id={PARAMETER_ID}</strong>, e.g. for Pressure: <a href="/parameters/?parameter_id=pressure">/parameters/?parameter_id=pressure</a></li>
             </ul>
         </li>
     </ul>
@@ -54,7 +62,7 @@
     </ul>
     <p>Additionally, there are several optional query string arguments:</p>
    <ul>
-        <li><span style="font-family:'Courier';">properties</span>, a comma-separated list of property IDs from the <a href="/property/">/property/</a> register, e.g. <span style="font-family:'Courier';">airT, stamp, rain</span></li>
+        <li><span style="font-family:'Courier';">parameters</span>, a comma-separated list of parameter IDs from the <a href="/parameters/">/parameters/</a> register, e.g. <span style="font-family:'Courier';">airT, stamp, rain</span></li>
    </ul>
     <h4>Example Data Queries</h4>
     <ul>
@@ -67,7 +75,7 @@
             A day's minutes data for a station
         </li>
         <li>
-            <a href="/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties=stamp,airT,rain">/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&properties=stamp,airT,rain</a>
+            <a href="/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&parameters=stamp,airT,rain">/data/?timestep=minutes&station_ids=RMPW12&start_date=2015-01-01&end_date=2015-01-02&amp;parameters=stamp,airT,rain</a>
             A day's minutes data for a station
         </li>
     </ul>
