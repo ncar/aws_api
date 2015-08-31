@@ -588,8 +588,15 @@ def get_parameter_col_names_station_from_scm(conn, station_id):
     return props
 
 
-def get_parameter_details(conn, station_id, timestep):
-    if station_id:
+def get_parameter_details(conn, parameter_id, station_id, timestep):
+    if parameter_id and station_id:
+        return [False, 'Please select either a parameter_id or a station_id, not both']
+    if parameter_id:
+        sql =   '''
+                SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                FROM tbl_parameters WHERE db_column = "''' + parameter_id + '''";
+                '''
+    elif station_id:
         if timestep == 'daily':
             # station's daily parameters
             sql =   '''
@@ -598,7 +605,7 @@ def get_parameter_details(conn, station_id, timestep):
                     SELECT parameter_id_daily
                     FROM tbl_stations_parameters JOIN tbl_parameters_minutes_daily
                     ON tbl_stations_parameters.parameter_id = tbl_parameters_minutes_daily.parameter_id_minutes
-                    WHERE aws_id = "RMPW12")
+                    WHERE aws_id = "''' + station_id + '''")
                     AND timestep = 'daily';
                     '''
         else:
@@ -607,7 +614,7 @@ def get_parameter_details(conn, station_id, timestep):
                     SELECT parameter_id, NAME, aggregation, datatype, units
                     FROM tbl_stations_parameters JOIN tbl_parameters
                     ON tbl_stations_parameters.parameter_id = tbl_parameters.db_column
-                    WHERE aws_id = "RMPW12"
+                    WHERE aws_id = "''' + station_id + '''"
                     AND timestep = 'minutes';
                     '''
     else:
@@ -642,10 +649,13 @@ def get_parameter_details(conn, station_id, timestep):
             'units'
         ]
 
-        return {
-            'header': header,
-            'data': [list(i) for i in rows]
-        }
+        return [
+            True,
+            {
+                'header': header,
+                'data': [list(i) for i in rows]
+            }
+        ]
 
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
@@ -725,3 +735,34 @@ def make_station_parameter_lookup_minutes():
         conn.commit()
         # disconnect from DB
         db_disconnect(conn)
+
+
+def get_stations_parameters(conn, station_id):
+    if conn is None:
+        conn = db_connect()
+
+    parameters = []
+    try:
+        # make a DB connection
+        conn = db_connect()
+
+        # clear cache
+        sql = 'SELECT parameter_id FROM tbl_stations_parameters WHERE aws_id = "' + station_id + '";'
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+
+        for row in rows:
+            parameters.append(row[0])
+
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in make_station_parameter_lookup()\n" + str(e))
+        return [False]
+    finally:
+        cursor.close()
+        conn.commit()
+        # disconnect from DB
+        db_disconnect(conn)
+
+    return [True, parameters]

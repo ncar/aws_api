@@ -122,15 +122,21 @@ def stations():
     """
     Stations register
 
-    Optional QSA parameters 'networks' or 'aws_ids' (not both)
+    Optional QSA parameters 'networks' or 'station_ids' (not both)
     """
     conn = functions.db_connect()
+    if request.args.get('parameters') == 'true':
+        parameters = True
+    else:
+        parameters = False
+
     data_obj = functions.get_station_details_obj(conn,
-                                                 station_ids=request.args.get('aws_ids'),
+                                                 station_ids=request.args.get('station_ids'),
                                                  owners=request.args.get('networks'),
                                                  sortby=request.args.get('sortby'),
                                                  sortdir=request.args.get('sortdir'),
-                                                 longlat=request.args.get('longlat'))
+                                                 longlat=request.args.get('longlat'),
+                                                 parameters=parameters)
     functions.db_disconnect(conn)
 
     if data_obj[0]:
@@ -154,7 +160,7 @@ def station(station_id):
     """
     A station's details
 
-    Same as /station/?aws_id=<station_id>
+    Same as /station/?station_id=<station_id>
     """
     conn = functions.db_connect()
 
@@ -190,4 +196,8 @@ def station(station_id):
 
 @routes.route('/parameters/')
 def parameters():
-    return Response(json.dumps(functions.get_parameter_details(None, request.args.get('station_id'), request.args.get('timestep'))), status=200, mimetype='application/json')
+    r = functions.get_parameter_details(None, request.args.get('parameter_id'), request.args.get('station_id'), request.args.get('timestep'))
+    if r[0]:
+        return Response(json.dumps(r[1]), status=200, mimetype='application/json')
+    else:
+        return Response(json.dumps(r[1]), status=400, mimetype='application/json')
