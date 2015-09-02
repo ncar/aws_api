@@ -155,7 +155,7 @@ def db_get_timeseries_data(conn, query):
 
     #stringify (from JSON)
     rs = []
-    if rows:
+    if 'rows' in locals():
         for row in rows:
             r = []
             for col in row:
@@ -167,7 +167,7 @@ def db_get_timeseries_data(conn, query):
                     r.append(col)
             rs.append(r)
     else:
-        rs = None
+        rs = []
 
     return rs
 

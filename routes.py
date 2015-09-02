@@ -62,7 +62,6 @@ def data():
         conn = functions.db_connect()
         rows = functions.db_get_timeseries_data(conn, query[1])
         functions.db_disconnect(conn)
-
         data_obj = functions.make_aws_timeseries_obj(request.args.get('timestep'), request.args.get('parameters'), rows)
 
         #convert data object to JSON
