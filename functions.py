@@ -3,6 +3,8 @@ import logging
 import sys
 from datetime import datetime, date
 import re
+from lxml import etree
+from StringIO import StringIO
 import settings
 
 
@@ -170,7 +172,7 @@ def db_get_timeseries_data(conn, query):
     return rs
 
 
-def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=(140, -38), properties=False):
+def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=(140, -38), parameters=False):
     """
     Executes a JSON array of station details for a given station ID against a given DB connection
     """
@@ -389,66 +391,6 @@ def make_aws_timeseries_obj(timestep, params, timeseries_data):
     return msg
 
 
-# TODO: complete
-def get_stations_parameters(conn, station_id):
-    if not station_id in ['ADLD01', 'ADLD02', 'AWNRM01', 'AWNRM02', 'AWNRM03', 'AWNRM04', 'AWNRM05', 'BIN001', 'BOW001', 'CAN001', 'CAR001', 'CON001', 'COO001', 'GRY001', 'JES001', 'JOY001', 'LEW001', 'LMW01', 'LMW02', 'LMW03', 'LMW04', 'LMW05', 'LMW06', 'LMW07', 'LMW08', 'LMW09', 'LMW10', 'MAC001', 'MIN001', 'MPWA01', 'MPWA02', 'MPWA03', 'MPWA04', 'MPWA06', 'MTM001', 'MVGWT01', 'MVGWT02', 'MVGWT03', 'MVGWT04', 'MVGWT05', 'MVGWT06', 'MVGWT07', 'MVGWT08', 'MVGWT09', 'RIV001', 'RMPW01', 'RMPW02', 'RMPW03', 'RMPW04', 'RMPW05', 'RMPW06', 'RMPW07', 'RMPW08', 'RMPW09', 'RMPW10', 'RMPW11', 'RMPW12', 'RMPW13', 'RMPW14', 'RMPW15', 'RMPW16', 'RMPW17', 'RMPW18', 'RMPW19', 'RMPW20', 'RMPW21', 'RMPW22', 'RMPW23', 'RMPW24', 'RMPW25', 'RMPW26', 'RMPW27', 'RMPW28', 'RMPW29', 'RMPW30', 'RMPW31', 'RMPW32', 'ROB001', 'RPWA05', 'STG001', 'SYM001', 'TAT001', 'TBRG01', 'TBRG02', 'TBRG03', 'TBRG04', 'TBRG06', 'TBRG08', 'TBRG09', 'TIN001', 'WIR001']:
-        return [False, 'station_id ' + station_id + ' is not found in the stations list']
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute('SELECT airT, appT, dp, rh, deltaT, soilT, gsr, Wmin, Wavg, Wmax, Wdir, rain, leaf, canT, canRH, pressure, wetT, vp FROM tbl_data_minutes WHERE aws_id = "' + station_id + '" LIMIT 1;')
-        rows = cursor.fetchall()
-
-        properties = []
-        for row in rows:
-            if row[0] is not None:
-                properties.append('airT')
-            if row[1] is not None:
-                properties.append('appT')
-            if row[2] is not None:
-                properties.append('db')
-            if row[3] is not None:
-                properties.append('rh')
-            if row[4] is not None:
-                properties.append('deltaT')
-            if row[5] is not None:
-                properties.append('soilT')
-            if row[6] is not None:
-                properties.append('gsr')
-            if row[7] is not None:
-                properties.append('Wmin')
-            if row[8] is not None:
-                properties.append('Wavg')
-            if row[9] is not None:
-                properties.append('Wmax')
-            if row[10] is not None:
-                properties.append('Wdir')
-            if row[11] is not None:
-                properties.append('rain')
-            if row[12] is not None:
-                properties.append('leaf')
-            if row[13] is not None:
-                properties.append('canT')
-            if row[14] is not None:
-                properties.append('canRH')
-            if row[15] is not None:
-                properties.append('pressure')
-            if row[16] is not None:
-                properties.append('WetT')
-            if row[17] is not None:
-                properties.append('vp')
-
-            return [True, properties]
-
-        cursor.close()
-
-        if len(properties) < 1:
-            return [False, 'no values for station ' + station_id]
-
-    except Exception, e:
-        return [False, 'DB error: ' + e.message]
-
-
 # TODO: pass errors up
 def get_network_obj(conn, owner_id):
     query = '''SELECT owner_id, owner_name FROM tbl_owners WHERE owner_id = "''' + owner_id + '''";'''
@@ -506,3 +448,324 @@ def get_networks_obj(conn):
 
     return obj
 
+
+def get_station_scm(conn, station_id):
+    """
+    Gets the Station scm file from the database
+
+    :param conn: MySQL connection object
+    :param station_id
+    :return: an SCM (XML) file as a string
+    """
+    sql = "SELECT scm FROM tbl_stations WHERE aws_id = '" + station_id + "';"
+    try:
+        if conn is None:
+            conn = db_connect()
+
+        cursor = conn.cursor()
+        cursor.execute(sql)
+
+        result = ''
+        while 1:
+            row = cursor.fetchone()
+            if row is None:
+                break
+            #aws_id, scm
+            result = str(row[0])
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in get_station_details()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        #conn.close()
+
+    return result
+
+
+# from processor
+def reading_vars_from_scm(scm_doc):
+    """
+    Gets an array of byte conversion information for the 15min buffer of a DMP file from an SCM file
+
+    :param scm_doc: the station's SCM file
+    :return: an array of dicts
+    """
+    logging.debug("def var_order_from_string()")
+
+    t = etree.parse(StringIO(scm_doc))
+
+    #Get instrument order from Buffer0
+    instance_entries = []
+    for instrument_buffer in t.xpath('//Buffer0/Entries/Entry'):
+        instance_entry = dict()
+        for child in instrument_buffer.getchildren():
+            if child.tag == 'Inst':
+                instance_entry['inst'] = child.text
+            if child.tag == 'Action':
+                instance_entry['action'] = child.text
+        instance_entries.append(instance_entry)
+
+    #Get instrument details from Instruments
+    instruments = []
+    for instrument in t.xpath('/Scheme/Instruments/*'):
+        if instrument.tag.startswith('INST') or instrument.tag.startswith('Inst'):
+            i = dict()
+            #print etree.tostring(instrument, pretty_print=True)
+            i['inst'] = instrument.tag.replace('INST', '').replace('Inst', '')
+            i['model'] = instrument.get('Model')
+            for inst in instrument.getchildren():
+                if inst.tag == 'Channel':
+                    i['name'] = inst.get('Name')
+                if inst.tag.startswith('Scal'):
+                    # some Scaling seems to miss type and this seems to eb for A gain B types only
+                    if inst.get('Type') is None or inst.get('Type').startswith("'A'"):
+                        i['type'] = 'conversion'
+                        i['conv'] = inst.get('Type')
+                        i['a'] = inst.get('a')
+                        i['b'] = inst.get('b')
+                    elif inst.get('Type').startswith("Formula"):
+                        i['type'] = 'formula'
+                        i['conv'] = inst.get('Formula')
+                    #print etree.tostring(inst, pretty_print=True)
+            instruments.append(i)
+
+    #Merge Buffer0 listing  with instrument details
+    instance_entries_with_details = []
+    for instance_entry in instance_entries:
+        for instrument in instruments:
+            if instrument['inst'] == instance_entry.get('inst'):
+                instance_entries_with_details.append(dict(instance_entry.items() + instrument.items()))
+
+    return instance_entries_with_details
+
+
+# from processor
+def readings_vars_additions_from_db(conn, reading_vars):
+    try:
+        if conn is None:
+            conn = db_connect()
+
+        cursor = conn.cursor()
+        reading_var_additions = []
+        for reading_var in reading_vars:
+            # TODO: move column name selection from DB to code
+            sql = '''SELECT db_col_name, bytes
+                     FROM tbl_var_lookup
+                     WHERE mea_name = "''' + reading_var.get('name') + '''"
+                     AND mea_action = "''' + reading_var.get('action').replace('AVE10', 'AVE') + '''";'''
+            cursor.execute(sql)
+            row = cursor.fetchone()
+            if row is None:
+                break
+            reading_var_addition = reading_var
+            reading_var_addition['db_col'] = str(row[0])
+            reading_var_addition['bytes'] = int(row[1])
+            reading_var_additions.append(reading_var_addition)
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in readings_vars_additions_from_db()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        #conn.close()
+
+    return reading_var_additions
+
+
+def get_parameter_col_names_station_from_scm(conn, station_id):
+    if conn is None:
+            conn = db_connect()
+
+    # get the SCM file
+    scm_doc = get_station_scm(conn, station_id)
+
+    props = []
+    deets = readings_vars_additions_from_db(conn, reading_vars_from_scm(scm_doc))
+    for deet in deets:
+        if deet['db_col'] != 'nothing' and deet['db_col'] is not None:
+            props.append(deet['db_col'])
+
+    return props
+
+
+def get_parameter_details(conn, parameter_id, station_id, timestep):
+    if parameter_id and station_id:
+        return [False, 'Please select either a parameter_id or a station_id, not both']
+    if parameter_id:
+        sql =   '''
+                SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                FROM tbl_parameters WHERE db_column = "''' + parameter_id + '''";
+                '''
+    elif station_id:
+        if timestep == 'daily':
+            # station's daily parameters
+            sql =   '''
+                    SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_parameters WHERE db_column IN (
+                    SELECT parameter_id_daily
+                    FROM tbl_stations_parameters JOIN tbl_parameters_minutes_daily
+                    ON tbl_stations_parameters.parameter_id = tbl_parameters_minutes_daily.parameter_id_minutes
+                    WHERE aws_id = "''' + station_id + '''")
+                    AND timestep = 'daily';
+                    '''
+        else:
+            # station's minutes parameters
+            sql =   '''
+                    SELECT parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_stations_parameters JOIN tbl_parameters
+                    ON tbl_stations_parameters.parameter_id = tbl_parameters.db_column
+                    WHERE aws_id = "''' + station_id + '''"
+                    AND timestep = 'minutes';
+                    '''
+    else:
+        if timestep == 'daily':
+            # all daily parameters
+            sql =   '''
+                    SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_parameters
+                    WHERE timestep = 'daily';
+                    '''
+        else:
+            # all minutes parameters
+            sql =   '''
+                    SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
+                    FROM tbl_parameters
+                    WHERE timestep = 'minutes';
+                    '''
+
+    try:
+        if conn is None:
+            conn = db_connect()
+
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+
+        header = [
+            'parameter_id',
+            'name',
+            'aggregation',
+            'datatype',
+            'units'
+        ]
+
+        return [
+            True,
+            {
+                'header': header,
+                'data': [list(i) for i in rows]
+            }
+        ]
+
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in readings_vars_additions_from_db()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        #conn.close()
+
+
+def get_stations_with_parameter(conn, parameter_id):
+    if conn is None:
+            conn = db_connect()
+
+    sql = 'SELECT aws_id FROM tbl_stations_parameters WHERE parameter_id = "' + parameter_id + '" ORDER BY aws_id;'
+    try:
+        if conn is None:
+            conn = db_connect()
+
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        r = []
+        for row in rows:
+            r.append(row[0])
+        return r
+
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in readings_vars_additions_from_db()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        #conn.close()
+
+
+# TODO: don't forget to add in cron for this
+def make_station_parameter_lookup_minutes():
+    try:
+        # make a DB connection
+        conn = db_connect()
+
+        # clear cache
+        sql = 'DELETE FROM tbl_stations_parameters;'
+        cursor = conn.cursor()
+        cursor.execute(sql)
+
+
+        # get all station ids
+        sql = '''SELECT aws_id FROM tbl_stations;'''
+        cursor.execute(sql)
+
+        # get each station's parameters
+        stations_parameters = []
+        for aws in cursor.fetchall():
+            # store each station's parameters for insertion
+            for param in get_parameter_col_names_station_from_scm(conn, aws[0]):
+                stations_parameters.append([aws[0], param])
+
+        # make the insert SQL
+        sql = 'INSERT INTO tbl_stations_parameters (aws_id, parameter_id) VALUES \n'
+        for sp in stations_parameters:
+            sql += '("' + sp[0] + '","' + sp[1] + '"),\n'
+        sql = sql.rstrip('\n').rstrip(',')
+        sql += ';'
+
+        # insert all stations' parameters into the cache table
+        cursor.execute(sql)
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in make_station_parameter_lookup()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        # disconnect from DB
+        db_disconnect(conn)
+
+
+def get_stations_parameters(conn, station_id):
+    if conn is None:
+        conn = db_connect()
+
+    parameters = []
+    try:
+        # make a DB connection
+        conn = db_connect()
+
+        # clear cache
+        sql = 'SELECT parameter_id FROM tbl_stations_parameters WHERE aws_id = "' + station_id + '";'
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+
+        for row in rows:
+            parameters.append(row[0])
+
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in make_station_parameter_lookup()\n" + str(e))
+        return [False]
+    finally:
+        cursor.close()
+        conn.commit()
+        # disconnect from DB
+        db_disconnect(conn)
+
+    return [True, parameters]

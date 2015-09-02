@@ -12,9 +12,9 @@ app.register_blueprint(routes)
 # TODO: data summary function
 # TODO: update to server
 if __name__ == '__main__':
-    logging.basicConfig(filename='aws_api.log',
+    logging.basicConfig(filename=settings.AWS_API_HOME + 'aws_api.log',
                         level=logging.DEBUG,
                         datefmt='%Y-%m-%dT%H:%M:%S',
                         format='%(asctime)s %(levelname)s %(message)s')
 
-    app.run(host='0.0.0.0', port=settings.PORT)
+    app.run(host='0.0.0.0', port=settings.PORT, debug=settings.DEBUG)
