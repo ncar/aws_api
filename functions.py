@@ -155,16 +155,19 @@ def db_get_timeseries_data(conn, query):
 
     #stringify (from JSON)
     rs = []
-    for row in rows:
-        r = []
-        for col in row:
-            if type(col) is date:
-                r.append(col.strftime('%Y-%m-%d'))
-            elif type(col) is datetime:
-                r.append(col.strftime('%Y-%m-%dT%H:%M:%S'))
-            else:
-                r.append(col)
-        rs.append(r)
+    if 'rows' in locals():
+        for row in rows:
+            r = []
+            for col in row:
+                if type(col) is date:
+                    r.append(col.strftime('%Y-%m-%d'))
+                elif type(col) is datetime:
+                    r.append(col.strftime('%Y-%m-%dT%H:%M:%S'))
+                else:
+                    r.append(col)
+            rs.append(r)
+    else:
+        rs = []
 
     return rs
 
