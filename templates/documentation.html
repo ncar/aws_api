@@ -47,8 +47,9 @@
             <strong>parameters &amp; stations</strong><br />
             <ul>
                 <li>get details for all parameters available for all stations: <a href="/parameters/">/parameters/</a></li>
+                <li>get all the details for a parameter: <a href="/parameters/?parameter_id=pressure">/parameters/?parameter_id=pressure</a></li>
                 <li>get details for a station's parameters: <strong>/parameters/?station_id={STATION_ID}</strong>, e.g. for Cadell: <a href="/parameters/?station_id=RMPW12">/parameters/?station_id=RMPW12</a></li>
-                <li>get the station that record a parameter: <strong>/parameters/?parameter_id={PARAMETER_ID}</strong>, e.g. for Pressure: <a href="/parameters/?parameter_id=pressure">/parameters/?parameter_id=pressure</a></li>
+                <li>get the stations that record a certain parameter: <strong>/parameters/?parameter_id={PARAMETER_ID}</strong>, e.g. for Pressure: <a href="/station/?parameter_id=pressure">/station/?parameter_id=pressure</a></li>
             </ul>
         </li>
     </ul>

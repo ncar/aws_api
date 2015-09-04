@@ -124,10 +124,6 @@ def stations():
     Optional QSA parameters 'networks' or 'station_ids' (not both)
     """
     conn = functions.db_connect()
-    if request.args.get('parameters') == 'true':
-        parameters = True
-    else:
-        parameters = False
 
     data_obj = functions.get_station_details_obj(conn,
                                                  station_ids=request.args.get('station_ids'),
@@ -135,7 +131,7 @@ def stations():
                                                  sortby=request.args.get('sortby'),
                                                  sortdir=request.args.get('sortdir'),
                                                  longlat=request.args.get('longlat'),
-                                                 parameters=parameters)
+                                                 parameter_id=request.args.get('parameter_id'))
     functions.db_disconnect(conn)
 
     if data_obj[0]:
@@ -168,8 +164,7 @@ def station(station_id):
                                                  owners=None,
                                                  sortby=None,
                                                  sortdir=None,
-                                                 longlat=None,
-                                                 parameters=True)
+                                                 longlat=None)
 
     parameters = functions.get_stations_parameters(conn, station_id)
 
