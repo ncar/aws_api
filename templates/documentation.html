@@ -19,7 +19,7 @@
         </li>
         <li>
             <strong><a href="/station/">/station/{STATION_ID}</a></strong><br />
-            a single weatherstations, e.g. Cadel''s aws_id is RMPW12 so try <a href="/station/RMPW12">/station/RMPW12</a>
+            a single weatherstations, e.g. Cadel''s station_id is RMPW12 so try <a href="/station/RMPW12">/station/RMPW12</a>
         </li>
         <li>
             <strong><a href="/parameters/">/parameters/</a></strong><br />
@@ -37,7 +37,7 @@
             queries against the DB's station lists
             <ul>
                 <li>get details for all stations, e.g. <a href="/station/">/station/</a> </li>
-                <li>get details for some stations by STATION_ID, e.g. <a href="/station/?aws_ids=RMPW12,LEW001,LMW04">/station/?aws_ids=RMPW12,LEW001,LMW04</a></li>
+                <li>get details for some stations by STATION_ID, e.g. <a href="/station/?station_ids=RMPW12,LEW001,LMW04">/station/?station_ids=RMPW12,LEW001,LMW04</a></li>
                 <li>get details for stations sorted by a parameter, e.g. <a href="/station/?sortby=name&sortdir=DESC">/station/?sortby=name&sortdir=DESC</a> (sort by name descending), <a href="/station/?sortby=elevation&sortdir=ASC">/station/?sortby=elevation&sortdir=ASC</a> (sort by elevation ascending), </li>
                 <li>get details for stations in distance order from a lat/long, e.g. <a href="/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)">/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)</a> </li>
                 <li>get details for stations in distance order from a lat/long but for only some networks, e.g. <a href="/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)&networks=SAMDB,LMW">/station/?sortby=distancefrom&longlat=(138.098727,-35.625126)&networks=SAMDB,LMW</a> </li>
@@ -56,7 +56,7 @@
     <p>Data queries have a few compulsory query string arguments, namely:</p>
     <ul>
         <li><span style="font-family:'Courier';">timestep</span>, either <span style="font-family:'Courier';">daily</span> or <span style="font-family:'Courier';">minutes</span></li>
-        <li><span style="font-family:'Courier';">station_ids</span>, a comma-separated list of station IDs (aws_id) from the <a href="/station/">/station/</a> register, e.g. <span style="font-family:'Courier';">RMPW12,RMPW27,LMW01</span></li>
+        <li><span style="font-family:'Courier';">station_ids</span>, a comma-separated list of station IDs (station_id) from the <a href="/station/">/station/</a> register, e.g. <span style="font-family:'Courier';">RMPW12,RMPW27,LMW01</span></li>
         <li><span style="font-family:'Courier';">start_date</span>, in YYYY-MM-DD format, e.g. <span style="font-family:'Courier';">2015-01-01</span>
         <li><span style="font-family:'Courier';">end_date</span>, in YYYY-MM-DD format, e.g. <span style="font-family:'Courier';">2015-01-02</span>
     </ul>

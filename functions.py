@@ -105,7 +105,7 @@ def db_make_timeseries_query(timestep, station_ids, owners, params, start_date, 
     if timestep == 'minutes':
         query += 'tbl_data_minutes'
     else:
-        query += 'tbl_data_day'
+        query += 'tbl_data_days'
     query += '\n'
 
     query += 'WHERE 1 '
