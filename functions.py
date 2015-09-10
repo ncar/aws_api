@@ -214,6 +214,8 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
                 return [False, 'You have specified long or lat values that are too large or too small (outside Australia']
             query += ', SQRT(ABS(' + lon + ' - lon) + ABS(' + lat + ' - lat)) AS distancefrom'
     query += '\nFROM tbl_stations\n'
+    query += '\nINNER JOIN tbl_districts\n'
+    query += '\nON tbl_stations.district_id = tbl_districts.id\n'
     query += 'WHERE 1\n'
 
     if station_ids is not None:
