@@ -172,16 +172,85 @@ def db_get_timeseries_data(conn, query):
     return rs
 
 
-def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=(140, -38), parameters=False):
+def valid_parameter(conn, parameter_id):
+    sql = "SELECT db_column AS parameter_id FROM tbl_parameters WHERE db_column = '" + parameter_id + "';"
+    try:
+        if conn is None:
+            conn = db_connect()
+
+        cursor = conn.cursor()
+        cursor.execute(sql)
+
+        result = None
+        while 1:
+            row = cursor.fetchone()
+            if row is None:
+                break
+            result = str(row[0])
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in get_station_details()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        #conn.close()
+
+    if result is not None:
+        return True
+    else:
+        return False
+
+
+def valid_station_id(conn, station_id):
+    sql = "SELECT aws_id FROM tbl_stations WHERE aws_id = '" + station_id + "';"
+    try:
+        if conn is None:
+            conn = db_connect()
+
+        cursor = conn.cursor()
+        cursor.execute(sql)
+
+        result = None
+        while 1:
+            row = cursor.fetchone()
+            if row is None:
+                break
+            result = str(row[0])
+    except MySQLdb.Error, e:
+        print "Error %d: %s" % (e.args[0], e.args[1])
+        logging.error("failed to connect to DB in get_station_details()\n" + str(e))
+        sys.exit(1)
+    finally:
+        cursor.close()
+        conn.commit()
+        #conn.close()
+
+    if result is not None:
+        return True
+    else:
+        return False
+
+
+def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=(140, -38), parameter_id=None):
     """
     Executes a JSON array of station details for a given station ID against a given DB connection
     """
     # validate station ID
     if station_ids:
+        conn = db_connect()
         if ',' in station_ids:
             for station_id in station_ids.split(','):
-                if not station_id in ['ADLD01', 'ADLD02', 'AWNRM01', 'AWNRM02', 'AWNRM03', 'AWNRM04', 'AWNRM05', 'BIN001', 'BOW001', 'CAN001', 'CAR001', 'CON001', 'COO001', 'GRY001', 'JES001', 'JOY001', 'LEW001', 'LMW01', 'LMW02', 'LMW03', 'LMW04', 'LMW05', 'LMW06', 'LMW07', 'LMW08', 'LMW09', 'LMW10', 'MAC001', 'MIN001', 'MPWA01', 'MPWA02', 'MPWA03', 'MPWA04', 'MPWA06', 'MTM001', 'MVGWT01', 'MVGWT02', 'MVGWT03', 'MVGWT04', 'MVGWT05', 'MVGWT06', 'MVGWT07', 'MVGWT08', 'MVGWT09', 'RIV001', 'RMPW01', 'RMPW02', 'RMPW03', 'RMPW04', 'RMPW05', 'RMPW06', 'RMPW07', 'RMPW08', 'RMPW09', 'RMPW10', 'RMPW11', 'RMPW12', 'RMPW13', 'RMPW14', 'RMPW15', 'RMPW16', 'RMPW17', 'RMPW18', 'RMPW19', 'RMPW20', 'RMPW21', 'RMPW22', 'RMPW23', 'RMPW24', 'RMPW25', 'RMPW26', 'RMPW27', 'RMPW28', 'RMPW29', 'RMPW30', 'RMPW31', 'RMPW32', 'ROB001', 'RPWA05', 'STG001', 'SYM001', 'TAT001', 'TBRG01', 'TBRG02', 'TBRG03', 'TBRG04', 'TBRG06', 'TBRG08', 'TBRG09', 'TIN001', 'WIR001']:
+                #if not station_id in ['ADLD01', 'ADLD02', 'AWNRM01', 'AWNRM02', 'AWNRM03', 'AWNRM04', 'AWNRM05', 'BIN001', 'BOW001', 'CAN001', 'CAR001', 'CON001', 'COO001', 'GRY001', 'JES001', 'JOY001', 'LEW001', 'LMW01', 'LMW02', 'LMW03', 'LMW04', 'LMW05', 'LMW06', 'LMW07', 'LMW08', 'LMW09', 'LMW10', 'MAC001', 'MIN001', 'MPWA01', 'MPWA02', 'MPWA03', 'MPWA04', 'MPWA06', 'MTM001', 'MVGWT01', 'MVGWT02', 'MVGWT03', 'MVGWT04', 'MVGWT05', 'MVGWT06', 'MVGWT07', 'MVGWT08', 'MVGWT09', 'RIV001', 'RMPW01', 'RMPW02', 'RMPW03', 'RMPW04', 'RMPW05', 'RMPW06', 'RMPW07', 'RMPW08', 'RMPW09', 'RMPW10', 'RMPW11', 'RMPW12', 'RMPW13', 'RMPW14', 'RMPW15', 'RMPW16', 'RMPW17', 'RMPW18', 'RMPW19', 'RMPW20', 'RMPW21', 'RMPW22', 'RMPW23', 'RMPW24', 'RMPW25', 'RMPW26', 'RMPW27', 'RMPW28', 'RMPW29', 'RMPW30', 'RMPW31', 'RMPW32', 'ROB001', 'RPWA05', 'STG001', 'SYM001', 'TAT001', 'TBRG01', 'TBRG02', 'TBRG03', 'TBRG04', 'TBRG06', 'TBRG08', 'TBRG09', 'TIN001', 'WIR001']:
+                #    return [False, 'station_id ' + station_id + ' is not found in the stations list']
+                if not valid_station_id(conn, station_id):
                     return [False, 'station_id ' + station_id + ' is not found in the stations list']
+        conn.close()
+
+    # validate parameter_id
+    if parameter_id:
+        if not valid_parameter(conn, parameter_id):
+            return [False, 'invalid parameter_id']
 
     # validate sortby
     if sortby:
@@ -224,7 +293,12 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
         query += ' aws_id IN (%s)\n'
         in_p = ', '.join(map(lambda x: '%s', station_ids.split(',')))
         query = query % in_p
-
+    elif parameter_id is not None:
+        # strip of the ' 1'
+        query = query[:-2]
+        query += ' aws_id IN (%s)\n'
+        in_p = "'" + "', '".join(get_stations_with_parameter(conn, parameter_id)) + "'"
+        query = query % in_p
     else:
         # if we have aws_ids, ignore any owners values
         if owners is not None:
@@ -244,6 +318,7 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
         query += 'ASC'
     query += ';'
 
+    print query
     # execute query
     try:
         cursor = conn.cursor()
@@ -597,6 +672,8 @@ def get_parameter_details(conn, parameter_id, station_id, timestep):
     if parameter_id and station_id:
         return [False, 'Please select either a parameter_id or a station_id, not both']
     if parameter_id:
+        if not valid_parameter(conn, parameter_id):
+            return [False, 'invalid parameter_id']
         sql =   '''
                 SELECT db_column AS parameter_id, NAME, aggregation, datatype, units
                 FROM tbl_parameters WHERE db_column = "''' + parameter_id + '''";
