@@ -16,7 +16,7 @@ def db_connect(host=settings.DB_SERVER, user=settings.DB_USR, passwd=settings.DB
         conn = MySQLdb.connect(host=host, user=user, passwd=passwd, db=db)
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
-        logging.error("failed to connect to DB in get_station_aws_id()\n" + str(e))
+        logging.error("failed to connect to DB in db_connect()\n" + str(e))
         sys.exit(1)
 
     return conn
@@ -236,16 +236,13 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
     """
     Executes a JSON array of station details for a given station ID against a given DB connection
     """
+    logging.debug('get_station_details_obj(' + str(conn) + ', ' + str(station_ids) + ', ' + str(owners) + ', ' + str(sortby) + ', ' + str(sortdir) + ', ' + str(longlat) + ', ' + str(parameter_id))
     # validate station ID
     if station_ids:
-        conn = db_connect()
         if ',' in station_ids:
             for station_id in station_ids.split(','):
-                #if not station_id in ['ADLD01', 'ADLD02', 'AWNRM01', 'AWNRM02', 'AWNRM03', 'AWNRM04', 'AWNRM05', 'BIN001', 'BOW001', 'CAN001', 'CAR001', 'CON001', 'COO001', 'GRY001', 'JES001', 'JOY001', 'LEW001', 'LMW01', 'LMW02', 'LMW03', 'LMW04', 'LMW05', 'LMW06', 'LMW07', 'LMW08', 'LMW09', 'LMW10', 'MAC001', 'MIN001', 'MPWA01', 'MPWA02', 'MPWA03', 'MPWA04', 'MPWA06', 'MTM001', 'MVGWT01', 'MVGWT02', 'MVGWT03', 'MVGWT04', 'MVGWT05', 'MVGWT06', 'MVGWT07', 'MVGWT08', 'MVGWT09', 'RIV001', 'RMPW01', 'RMPW02', 'RMPW03', 'RMPW04', 'RMPW05', 'RMPW06', 'RMPW07', 'RMPW08', 'RMPW09', 'RMPW10', 'RMPW11', 'RMPW12', 'RMPW13', 'RMPW14', 'RMPW15', 'RMPW16', 'RMPW17', 'RMPW18', 'RMPW19', 'RMPW20', 'RMPW21', 'RMPW22', 'RMPW23', 'RMPW24', 'RMPW25', 'RMPW26', 'RMPW27', 'RMPW28', 'RMPW29', 'RMPW30', 'RMPW31', 'RMPW32', 'ROB001', 'RPWA05', 'STG001', 'SYM001', 'TAT001', 'TBRG01', 'TBRG02', 'TBRG03', 'TBRG04', 'TBRG06', 'TBRG08', 'TBRG09', 'TIN001', 'WIR001']:
-                #    return [False, 'station_id ' + station_id + ' is not found in the stations list']
                 if not valid_station_id(conn, station_id):
                     return [False, 'station_id ' + station_id + ' is not found in the stations list']
-        conn.close()
 
     # validate parameter_id
     if parameter_id:
@@ -283,13 +280,14 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
                 return [False, 'You have specified long or lat values that are too large or too small (outside Australia']
             query += ', SQRT(ABS(' + lon + ' - lon) + ABS(' + lat + ' - lat)) AS distancefrom'
     query += '\nFROM tbl_stations\n'
-    query += '\nINNER JOIN tbl_districts\n'
-    query += '\nON tbl_stations.district_id = tbl_districts.id\n'
+    query += 'INNER JOIN tbl_districts\n'
+    query += 'ON tbl_stations.district_id = tbl_districts.id\n'
     query += 'WHERE 1\n'
 
     if station_ids is not None:
         # strip of the ' 1'
         query = query[:-2]
+        #query += ' aws_id IN ("RMPW12","RMPW18")\n'
         query += ' aws_id IN (%s)\n'
         in_p = ', '.join(map(lambda x: '%s', station_ids.split(',')))
         query = query % in_p
@@ -318,6 +316,7 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
         query += 'ASC'
     query += ';'
 
+    logging.debug(query)
     # execute query
     try:
         cursor = conn.cursor()
@@ -349,7 +348,7 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
             })
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
-        logging.error("failed to connect to DB in get_station_aws_id()\n" + str(e))
+        logging.error("failed to connect to DB in get_station_details_obj()\n" + str(e))
 
         return [False, str(e)]
     finally:
