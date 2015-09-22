@@ -267,7 +267,7 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
 
     # make query
     query = 'SELECT '
-    query += 'aws_id, name, district, owner, lon, lat, elevation, status'
+    query += 'aws_id, tbl_stations.name, tbl_districts.name AS district_name, tbl_stations.owner AS owner, lon, lat, elevation, status'
     if sortby == 'distancefrom':
         if longlat is None:
             return {'ERROR': 'You have specified sortby == distancefrom but you have not given a longlat coordinate or your coordinate is not in the format (lon,lat)'}
@@ -318,7 +318,6 @@ def get_station_details_obj(conn, station_ids, owners, sortby, sortdir, longlat=
         query += 'ASC'
     query += ';'
 
-    print query
     # execute query
     try:
         cursor = conn.cursor()
